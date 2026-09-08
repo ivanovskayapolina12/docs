@@ -1,0 +1,57 @@
+---
+title: "List Master Accounts"
+description: "List master accounts for a platform tenant."
+---
+
+List Master Accounts owned by the authenticated platform tenant.
+
+### Endpoint
+
+`POST /v3/onboarding/master_accounts/list`
+
+### Authentication and target
+
+A platform-scoped credential associated with a platform tenant is required. Account-targeting headers do not replace this credential policy. Use the standard HMAC-SHA256 request-signing headers.
+
+Do not send X-ISPB or X-Account-Number. This platform-only route rejects account-targeting headers.
+
+### Request body
+
+| Field            | Required | Description                                                                                                      |
+| ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `status`         | No       | Numeric status filter: 1 PENDING, 2 ACTIVE, 3 FROZEN, 4 CLOSED, 5 REJECTED, 6 EXPIRED, or 7 PENDING\_SUBMISSION. |
+| `tax_id`         | No       | Tax ID filter; normalized to uppercase.                                                                          |
+| `page.page`      | No       | Page number starting at 1.                                                                                       |
+| `page.page_size` | No       | Defaults to 20 and is capped at 100.                                                                             |
+
+### Success data
+
+`master_accounts[]` plus `page` with `page`, `page_size`, `total`, and `total_pages`.
+
+### Behavior and validation
+
+This is a synchronous, tenant-scoped filtered list. It does not use account-targeting selectors.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `authentication_required` or `permission_denied` when platform tenant context is missing or invalid.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/onboarding/master_accounts/list" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"status":2,"page":{"page":1,"page_size":20}}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"master_accounts":[{"reference_id":"master-ref-demo-001","status":2}],"page":{"page":1,"page_size":20,"total":1,"total_pages":1}},"time":1710001200000}
+```

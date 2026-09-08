@@ -1,0 +1,55 @@
+---
+title: "Update Master Account"
+description: "Update master metadata or compliance."
+---
+
+Update Master Account metadata or submit a new compliance round.
+
+### Endpoint
+
+`POST /v3/onboarding/master_accounts/update`
+
+### Authentication and target
+
+A platform-scoped credential associated with a platform tenant is required. Account-targeting headers do not replace this credential policy. Use the standard HMAC-SHA256 request-signing headers.
+
+Do not send X-ISPB or X-Account-Number. This platform-only route rejects account-targeting headers.
+
+### Request body
+
+Send exactly one of `reference_id` or `account`. Metadata fields `trading_name` and `notification_email` are optional. Compliance fields include `compliance_mode`, `compliance_payload`, `return_url`, `provider_session_info`, `language`, and `login_account_hint`. `request_id` becomes required when any compliance re-submission field is present.
+
+### Success data
+
+The updated `master_account`; when a new compliance session is created, the response can also include `compliance_session_id` and `verification_url`.
+
+### Behavior and validation
+
+Metadata-only updates do not require `request_id`. Reuse the same request ID for technical retries, and use a new value for a genuinely new compliance round. Acceptance of a compliance re-submission also depends on downstream compliance state.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `invalid_parameter` for an invalid selector.
+* `field_required` when a compliance re-submission omits `request_id`.
+* `field_invalid` for mode-specific compliance violations.
+* `not_found` when the account is not visible.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/onboarding/master_accounts/update" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"reference_id":"master-ref-demo-001","notification_email":"operations@example.test"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"master_account":{"reference_id":"master-ref-demo-001","notification_email":"operations@example.test","status":2}},"time":1710001300000}
+```

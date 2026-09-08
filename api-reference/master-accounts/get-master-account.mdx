@@ -1,0 +1,57 @@
+---
+title: "Get Master Account"
+description: "Retrieve a master account."
+---
+
+Retrieve one Master Account by merchant reference or by bank account reference.
+
+### Endpoint
+
+`POST /v3/onboarding/master_accounts/detail`
+
+### Authentication and target
+
+A platform credential can read accounts in its tenant. A user-scoped owner credential can read its own Master Account. This route does not accept account-targeting headers.
+
+### Request body
+
+Send exactly one selector:
+
+| Field          | Required    | Description                                    |
+| -------------- | ----------- | ---------------------------------------------- |
+| `reference_id` | Conditional | Merchant reference.                            |
+| `account`      | Conditional | Object containing `ispb` and `account_number`. |
+
+### Success data
+
+A `master_account` object with reference, holder document/name, document type, onboarding and compliance statuses, compliance session, trading name, notification email, timestamps, and bank account details after opening.
+
+### Behavior and validation
+
+This is a synchronous read. The `account` field can be absent while onboarding is not yet activated.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `invalid_parameter` when neither or both selectors are sent.
+* `permission_denied` when the account is outside the caller's tenant/owner scope.
+* `not_found` when no visible account matches.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/onboarding/master_accounts/detail" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"reference_id":"master-ref-demo-001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"master_account":{"reference_id":"master-ref-demo-001","holder_name":"Demo Subject","status":1,"compliance_status":1}},"time":1710001100000}
+```

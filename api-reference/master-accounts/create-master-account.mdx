@@ -1,0 +1,67 @@
+---
+title: "Create Master Account"
+description: "Start master-account onboarding."
+---
+
+Create a Master Account onboarding record and start the selected compliance flow.
+
+### Endpoint
+
+`POST /v3/onboarding/master_accounts/create`
+
+### Authentication and target
+
+A platform-scoped credential associated with a platform tenant is required. Account-targeting headers do not replace this credential policy. Use the standard HMAC-SHA256 request-signing headers.
+
+Do not send X-ISPB or X-Account-Number. This platform-only route rejects account-targeting headers.
+
+### Request body
+
+At least one of `request_id` or `reference_id` is required. Keep both stable for technical retries.
+
+| Field                                | Required    | Description                                                                                                        |
+| ------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| `request_id`                         | Conditional | Request identifier. Required when `reference_id` is absent.                                                        |
+| `reference_id`                       | Conditional | Merchant reference; a globally unique UUID/ULID is recommended.                                                    |
+| `compliance_mode`                    | Yes         | Numeric enum: 1 Hosted Link, 2 API Body, or 3 Provider Session.                                                    |
+| `compliance_payload`                 | Yes         | Requires numeric document type (1 CPF or 2 CNPJ), tax ID, and legal name; mode-specific data can also be required. |
+| `trading_name`, `notification_email` | No          | Account metadata.                                                                                                  |
+| `return_url`                         | Conditional | Required for Hosted Link.                                                                                          |
+| `provider_session_info`              | Conditional | Provider identifiers for Provider Session.                                                                         |
+| `language`, `login_account_hint`     | Conditional | Compliance-flow options.                                                                                           |
+
+CPF tax IDs are 11 numeric digits. CNPJ tax IDs are 12 uppercase alphanumeric characters followed by two digits. API Body and Provider Session impose additional person/business and UBO rules.
+
+### Success data
+
+`reference_id`, current `status`, `compliance_session_id`, and an optional `verification_url`.
+
+### Behavior and validation
+
+Creation starts or reuses onboarding state; it does not promise that the bank account is already active. The service looks up an existing same-tenant record by the first non-empty request/reference identifier. Stable identifiers make retries converge on the same identity.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `authentication_required` or `permission_denied` when the platform tenant is missing or not authorized.
+* `field_required` or `field_invalid` for identifiers or compliance input.
+* `compliance_provider_unavailable` when the selected provider cannot accept the request.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/onboarding/master_accounts/create" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"request_id":"master-create-demo-001","reference_id":"master-ref-demo-001","compliance_mode":1,"compliance_payload":{"document_type":1,"tax_id":"00000000000","legal_name":"Demo Subject"},"return_url":"https://merchant.example.test/onboarding-return"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"reference_id":"master-ref-demo-001","status":1,"compliance_session_id":"cmp_demo_001","verification_url":"https://verification.example.test/session/cmp_demo_001"},"time":1710001000000}
+```
