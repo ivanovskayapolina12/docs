@@ -1,0 +1,60 @@
+---
+title: "Get Refund Details"
+description: "Retrieve an accessible PIX refund."
+---
+
+Retrieve a PIX refund visible to the authenticated target account.
+
+### Endpoint
+
+`POST /v3/refunds/details`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+Supply at least one identifier.
+
+| Field                  | Required    | Type   | Description                     |
+| ---------------------- | ----------- | ------ | ------------------------------- |
+| `refund_id`            | Conditional | string | Platform refund transaction ID. |
+| `settlement_refund_id` | Conditional | string | Settlement ID of the refund.    |
+
+### Success data
+
+The mapper-populated refund detail fields, including refund and settlement IDs, merchant order ID, decimal-string amount, numeric status, memo/reason, parties when available, and original settlement reference.
+
+### Behavior and validation
+
+The lookup is account-scoped. The original payer can view refund records across states; the recipient-side view is more restricted. Receiver information is populated only for completed refunds. Treat omitted generated fields as unpopulated, not as additional guarantees.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` when both identifiers are absent.
+* `4003003` when the refund does not exist or is outside the caller's accessible account scope.
+* `501` for transaction-query transport failure and mapped upstream errors.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/refunds/details" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"refund_id":"refund_demo_001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"details":{"refund_id":"refund_demo_001","settlement_refund_id":"settlement_refund_demo_001","original_settlement_id":"settlement_demo_charge_001","merchant_order_id":"<CURRENT_UTC_YYMMDD>-refund-demo-001","amount":"5.25","txn_status":1,"memo":"Demo customer refund"}},"time":1767225600000}
+```

@@ -1,0 +1,63 @@
+---
+title: "Create PIX Refund"
+description: "Create an asynchronous PIX refund."
+---
+
+Create a partial or full PIX refund for an inbound payment owned by the authenticated target account.
+
+### Endpoint
+
+`POST /v3/refunds/pix`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers. The route also enforces the applicable active-user and REFUND scene checks.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field                    | Required | Type   | Validation                                                                                                                   |
+| ------------------------ | -------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `original_settlement_id` | Yes      | string | Settlement ID of the original inbound PIX payment.                                                                           |
+| `merchant_order_id`      | Yes      | string | Its first six characters must be a valid `YYMMDD` date whose UTC day overlaps the current UTC time with a ±1-hour allowance. |
+| `amount`                 | Yes      | string | Positive decimal with at most two fractional places; cannot exceed the remaining refundable amount.                          |
+| `reason`                 | No       | string | Forwarded as the refund memo.                                                                                                |
+
+### Success data
+
+The new refund identifiers, merchant order ID, decimal-string amount, and numeric transaction status. A newly accepted refund starts at status `1` (PENDING).
+
+### Behavior and validation
+
+The original payment must be an inbound PIX payment owned by the selected payee account, remain refundable, and be no more than 90 days old. The service fixes the internal refund type to payee-request and reason code to MD06.
+
+Creation is asynchronous: `1 PENDING` → `5 PROCESSING` → `2 COMPLETED` or `3 FAILED`. The merchant order ID is protected by a 48-hour Redis idempotency record. Reusing it returns business code `4001013`.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` for a missing settlement ID, merchant order ID, or amount.
+* `4002` for an invalid amount or merchant-order format; `400` when its date is stale.
+* `4001013` when the merchant order ID was already processed.
+* `4003003` when the original payment is missing or inaccessible; `4003005` for refund eligibility or processing rejection; `4001999` when the requested amount exceeds the refundable amount.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/refunds/pix" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"original_settlement_id":"settlement_demo_charge_001","merchant_order_id":"<CURRENT_UTC_YYMMDD>-refund-demo-001","amount":"5.25","reason":"Demo customer refund"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"refund_id":"refund_demo_001","settlement_refund_id":"settlement_refund_demo_001","merchant_order_id":"<CURRENT_UTC_YYMMDD>-refund-demo-001","amount":"5.25","txn_status":1},"time":1767225600000}
+```

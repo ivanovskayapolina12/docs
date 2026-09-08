@@ -1,0 +1,57 @@
+---
+title: "Check Refund Status"
+description: "Refresh and return a PIX refund status."
+---
+
+Refresh and return the current status of an accessible PIX refund.
+
+### Endpoint
+
+`POST /v3/refunds/status/check`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field       | Required | Type   | Validation         |
+| ----------- | -------- | ------ | ------------------ |
+| `refund_id` | Yes      | string | Must be non-empty. |
+
+### Success data
+
+The refund identifier and numeric transaction status. Status values are `1 PENDING`, `2 COMPLETED`, `3 FAILED`, `4 CANCELLED`, `5 PROCESSING`, `6 REFUNDED`, `7 PARTIALLY_REFUNDED`, and `8 DISPUTED`.
+
+### Behavior and validation
+
+Despite its name, this POST operation is not read-only: it can acquire a lock, query the payment rail, and persist a refreshed status. The original payer can see every state. For a recipient-side lookup that has not reached COMPLETED, the service can return a generic processing view. Poll with a fresh nonce on each request.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` for a missing refund ID.
+* `4003003` when the refund is missing or inaccessible.
+* `501` for status-query transport failure and mapped upstream errors.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/refunds/status/check" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"refund_id":"refund_demo_001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"refund_id":"refund_demo_001","txn_status":2},"time":1767225600000}
+```
