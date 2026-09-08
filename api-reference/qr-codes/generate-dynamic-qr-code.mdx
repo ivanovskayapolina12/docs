@@ -1,0 +1,66 @@
+---
+title: "Generate Dynamic QR Code"
+description: "Create a dynamic PIX QR code."
+---
+
+Create a dynamic PIX QR code for the authenticated target account. Currency is fixed internally to BRL.
+
+### Endpoint
+
+`POST /v3/qr_code/generate/dynamic`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers. This path also enforces the applicable active-user and PAYIN scene checks.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field                             | Required    | Type    | Validation or default                                                                        |
+| --------------------------------- | ----------- | ------- | -------------------------------------------------------------------------------------------- |
+| `merchant_order_id`               | Yes         | string  | Non-empty; downstream accepts letters, digits, hyphen, and underscore.                       |
+| `pix_key`                         | Yes         | string  | Required. The current handler surfaces an empty value as business code 500.                  |
+| `pix_key_type`                    | No at edge  | number  | Numeric PIX-key enum; downstream validates key/type semantics.                               |
+| `amount`                          | Yes         | string  | Positive decimal with at most two places.                                                    |
+| `expires`                         | No          | number  | Seconds; 0 defaults to 7200. No verified public min/max is implemented here.                 |
+| `memo`, `city`                    | No          | string  | Passed downstream.                                                                           |
+| `payer_document_id`, `payer_name` | Conditional | string  | Supply both or neither. Document length must be 11 or 14.                                    |
+| `payer_verify`                    | No          | boolean | Defaults false. Payer data is forwarded only when true and both payer fields are present.    |
+| `reuseable`                       | No          | string  | Present in the contract but not propagated by the current service mapper; do not rely on it. |
+
+### Success data
+
+`payload_base64`, `qr_code_id`, and `merchant_order_id`.
+
+### Behavior and validation
+
+Payer data may be omitted, but a partial payer pair is rejected. Creation is synchronous from this API's perspective. The only implementation-backed expiry behavior is the submitted `expires` value or its 7200-second default.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* Business code `4000` for a missing merchant order or incomplete payer pair.
+* `4002` for an invalid amount or payer-document length.
+* Current business code `500` for a missing `pix_key`.
+* `4003008` when account context is unavailable, plus mapped downstream validation/processing errors.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/qr_code/generate/dynamic" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"merchant_order_id":"260831-qr-dynamic-demo-001","pix_key":"11111111-2222-4333-8444-555555555555","pix_key_type":5,"amount":"15.25","expires":1800,"memo":"Demo dynamic PIX charge","city":"Sao Paulo","payer_document_id":"12345678901","payer_name":"Demo Payer","payer_verify":true}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"payload_base64":"fictional-base64-payload","qr_code_id":"qr_demo_dynamic_001","merchant_order_id":"260831-qr-dynamic-demo-001"},"time":1767225600000}
+```

@@ -1,0 +1,62 @@
+---
+title: "Generate Static QR Code"
+description: "Create a static PIX QR code."
+---
+
+Create a static PIX QR code for the authenticated target account. Currency is fixed internally to BRL.
+
+### Endpoint
+
+`POST /v3/qr_code/generate/static`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field               | Required   | Type   | Validation                                                             |
+| ------------------- | ---------- | ------ | ---------------------------------------------------------------------- |
+| `merchant_order_id` | Yes        | string | Non-empty; downstream accepts letters, digits, hyphen, and underscore. |
+| `pix_key`           | Yes        | string | Required and must satisfy EVP format rules.                            |
+| `pix_key_type`      | No at edge | number | Downstream requires `5` (EVP/random key).                              |
+| `memo`, `city`      | No         | string | Passed downstream.                                                     |
+
+The EVP value must not contain `@` and must be 32–36 characters.
+
+### Success data
+
+`payload_base64`, `qr_code_id`, and `merchant_order_id`.
+
+### Behavior and validation
+
+Creation is synchronous. Static QR has no public reusable flag; do not infer behavior from the unused dynamic `reuseable` field.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` for a missing `merchant_order_id`.
+* Current business code `500` for a missing `pix_key`.
+* Mapped downstream PIX-key validation errors and `4003008` when account context is unavailable.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/qr_code/generate/static" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"merchant_order_id":"260831-qr-static-demo-001","pix_key":"11111111-2222-4333-8444-555555555555","pix_key_type":5,"memo":"Demo static PIX QR","city":"Sao Paulo"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"payload_base64":"fictional-base64-payload","qr_code_id":"qr_demo_static_001","merchant_order_id":"260831-qr-static-demo-001"},"time":1767225600000}
+```

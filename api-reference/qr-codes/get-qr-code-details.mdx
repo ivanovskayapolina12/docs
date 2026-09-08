@@ -1,0 +1,57 @@
+---
+title: "Get QR Code Details"
+description: "Retrieve a QR code and latest transaction."
+---
+
+Retrieve QR metadata and, when available, the latest transaction associated with it.
+
+### Endpoint
+
+`POST /v3/qr_code/details`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field        | Required | Type   | Validation         |
+| ------------ | -------- | ------ | ------------------ |
+| `qr_code_id` | Yes      | string | Must be non-empty. |
+
+### Success data
+
+`qr_code_id`, `merchant_order_id`, numeric `qr_code_type`, `qr_code_memo`, `qr_code_payload_base64`, numeric `created_at`, optional `last_txn`, and `is_paid`. `last_txn` contains numeric status/source enums, string amount/currency/IDs, parties, and numeric timestamps when populated.
+
+### Behavior and validation
+
+A nil QR result or absent QR details currently becomes a successful empty data object rather than a documented not-found error. `is_paid` is true only when `last_txn` exists and its status is COMPLETED. Party documents may be masked. Known QR type values are 11 static, 12 dynamic instant, 13 dynamic expiry, and 14 composite.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` for a missing QR ID.
+* `501` for RPC transport failure.
+* Mapped domain errors including `4003003` for transaction-not-found behavior, and `4003008` for missing account context.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/qr_code/details" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"qr_code_id":"qr_demo_dynamic_001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"qr_code_id":"qr_demo_dynamic_001","merchant_order_id":"260831-qr-dynamic-demo-001","qr_code_type":12,"created_at":1767225500000,"is_paid":false},"time":1767225600000}
+```
