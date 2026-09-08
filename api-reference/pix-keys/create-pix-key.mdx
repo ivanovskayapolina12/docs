@@ -1,0 +1,47 @@
+---
+title: "Create PIX Key"
+description: "Create a PIX key for the selected account."
+---
+
+Create a new PIX key for the authenticated target account.
+
+### Endpoint
+
+`POST /v3/pix_keys/create`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+`pix_key_type` is required and numeric: 1 CPF, 2 CNPJ, 3 EMAIL, 4 PHONE, 5 EVP. `pix_key_value` is required except for EVP. CNPJ normalization trims the value and uppercases a recognized alphanumeric form; downstream DICT/provider validation remains authoritative.
+
+### Success data
+
+`pix_key`, numeric `pix_key_type`, numeric `status`, and numeric `created_at`.
+
+### Behavior and validation
+
+If DICT omits `created_at`, the service supplies the current Unix-millisecond time. This endpoint exposes no idempotency key.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` missing type or required value; `500` missing account context.
+* `501` DICT failure plus mapped PIX-key errors, including already-linked or inactive conditions.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/pix_keys/create --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"pix_key_type":3,"pix_key_value":"demo.new.key@example.test"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"pix_key":"demo.new.key@example.test","pix_key_type":3,"status":1,"created_at":1767225600000},"time":1767225600000}
+```

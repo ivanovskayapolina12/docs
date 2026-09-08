@@ -1,0 +1,49 @@
+---
+title: "Delete PIX Key"
+description: "Delete a PIX key owned by the selected account."
+---
+
+Delete a PIX key owned by the authenticated target account.
+
+### Endpoint
+
+`POST /v3/pix_keys/delete`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field     | Required | Type   | Validation                           |
+| --------- | -------- | ------ | ------------------------------------ |
+| `pix_key` | Yes      | string | Non-empty; normalized before lookup. |
+
+### Success data
+
+The deleted `pix_key` and numeric `deleted_at`.
+
+### Behavior and validation
+
+The service looks up the key using selected-account ISPB and requester document, rejects a key returned for another account, then updates its upstream status to numeric 4 (DELETED). `deleted_at` uses positive upstream `updated_at`, otherwise current Unix milliseconds. No endpoint idempotency key exists.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` missing key; `4004003` key belongs to another account.
+* `501` lookup/update RPC failure and mapped upstream errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/pix_keys/delete --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"pix_key":"demo.new.key@example.test"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"pix_key":"demo.new.key@example.test","deleted_at":1767225600000},"time":1767225600000}
+```
