@@ -1,0 +1,49 @@
+---
+title: "Check Transfer Status"
+description: "Retrieve the current status of an outbound transfer."
+---
+
+Retrieve the current outbound status for a transaction owned by the selected account.
+
+### Endpoint
+
+`POST /v3/transfers/status/check`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field    | Required | Type   | Validation         |
+| -------- | -------- | ------ | ------------------ |
+| `txn_id` | Yes      | string | Must be non-empty. |
+
+### Success data
+
+Numeric `txn_status`: 1 PENDING, 2 COMPLETED, 3 FAILED, 4 CANCELLED, 5 PROCESSING, 6 REFUNDED, 7 PARTIALLY\_REFUNDED, or 8 DISPUTED.
+
+### Behavior and validation
+
+The downstream query is constrained to the selected account and outbound flow. Poll with a fresh timestamp and nonce; signature replay protection is not endpoint idempotency.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` missing transaction ID; `4003008` missing account context.
+* `501` status-query RPC failure and mapped upstream errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/transfers/status/check --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"txn_id":"demo-pix-txn-003"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"txn_status":2},"time":1767225600000}
+```

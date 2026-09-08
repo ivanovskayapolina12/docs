@@ -1,0 +1,48 @@
+---
+title: "Get Transfer Details"
+description: "Retrieve an outbound transfer owned by the selected account."
+---
+
+Retrieve an outbound transfer owned by the authenticated target account.
+
+### Endpoint
+
+`POST /v3/transfers/details`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+Supply `txn_id` or `settlement_id`; at least one is required. Optional `merchant_order_id` is forwarded downstream but does not by itself satisfy local validation.
+
+### Success data
+
+`details` with the mapper-populated IDs, numeric `txn_status` and `source_type`, decimal-string amount/fees, currency, parties, memo, and rejection reason. Declared fields not assigned by the mapper can remain zero/empty/null.
+
+### Behavior and validation
+
+The query is constrained to outbound flow and the selected account. Party documents may be masked by merchant configuration.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` when both transaction and settlement IDs are absent.
+* `4003003` when no accessible details exist; `4003008` missing account context.
+* `501` query RPC failure and `500` nil internal response.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/transfers/details --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"txn_id":"demo-pix-txn-003"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"details":{"txn_id":"demo-pix-txn-003","settlement_id":"demo-settlement-003","merchant_order_id":"demo-manual-pix-001","txn_status":2,"source_type":2,"amount":"25.00","currency":"BRL","memo":"Demo supplier payment","debit_fee":"0.00","rejection_reason":"","payer":null,"payee":null}},"time":1767225600000}
+```

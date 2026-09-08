@@ -1,0 +1,74 @@
+---
+title: "Confirm PIX Transfer by Key"
+description: "Submit a PIX transfer from a key-initiation reference."
+---
+
+Submit payment using a valid reference created by the PIX-key initiation route.
+
+### Endpoint
+
+```
+POST /v3/transfers/pix/key-confirm
+```
+
+### Authentication and target
+
+Use an ACCOUNT credential for its bound account, or a USER credential with both `X-ISPB` and `X-Account-Number`. If an ACCOUNT credential sends those headers, both must be present and must match its bound account. PLATFORM credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits `X-ISPB` and `X-Account-Number`. If `X-Client-ID` identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating `X-Signature`.
+
+### Request body
+
+| Field               | Required | Type   | Validation                                                               |
+| ------------------- | -------- | ------ | ------------------------------------------------------------------------ |
+| `ref_id`            | Yes      | string | Must exist in the one-minute preflight cache and belong to this account. |
+| `merchant_order_id` | Yes      | string | Starts with UTC YYMMDD; the date must overlap current UTC ±1 hour.       |
+| `amount`            | Yes      | string | Positive decimal with at most two places.                                |
+| `memo`              | No       | string | Forwarded to payment processing.                                         |
+
+### Success data
+
+`merchant_order_id`, `txn_id`, and numeric `txn_status`. Declared payer and payee fields are not populated by the current mapper.
+
+### Behavior and validation
+
+Currency is fixed to BRL. The reference is deleted after a successful payment response. The synchronous response can carry a non-final status; poll the status endpoint with a fresh nonce. No endpoint-specific idempotency key exists.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` for missing required fields.
+* `4002` for an invalid amount or merchant order format.
+* `400` for a stale merchant order date.
+* `4003012` for a missing, expired, or invalid reference.
+* `4004003` when the reference belongs to another account.
+* `4003014` for payment failure, plus mapped provider errors such as insufficient funds.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/transfers/pix/key-confirm" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"ref_id":"11111111-2222-4333-8444-555555555555","merchant_order_id":"<CURRENT_UTC_YYMMDD>-demo-key-001","amount":"12.34","memo":"Demo PIX payment"}'
+```
+
+### Example response
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "merchant_order_id": "<CURRENT_UTC_YYMMDD>-demo-key-001",
+    "txn_id": "demo-pix-txn-001",
+    "txn_status": 1
+  },
+  "time": 1767225600000
+}
+```

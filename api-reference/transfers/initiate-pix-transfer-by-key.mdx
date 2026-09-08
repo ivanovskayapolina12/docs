@@ -1,0 +1,80 @@
+---
+title: "Initiate PIX Transfer by Key"
+description: "Resolve a PIX key and create a short-lived confirmation reference."
+---
+
+Resolve a PIX key and create a temporary reference for later transfer confirmation.
+
+### Endpoint
+
+```
+POST /v3/transfers/pix/key-initiate
+```
+
+### Authentication and target
+
+Use an ACCOUNT credential for its bound account, or a USER credential with both `X-ISPB` and `X-Account-Number`. If an ACCOUNT credential sends those headers, both must be present and must match its bound account. PLATFORM credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits `X-ISPB` and `X-Account-Number`. If `X-Client-ID` identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating `X-Signature`.
+
+### Request body
+
+| Field     | Required | Type   | Validation                                                                                       |
+| --------- | -------- | ------ | ------------------------------------------------------------------------------------------------ |
+| `pix_key` | Yes      | string | Non-empty. The service trims it, normalizes an alphanumeric CNPJ form, and detects the key type. |
+
+### Success data
+
+`ref_id`, resolved payee, and `settlement_id`. Party document and account enum fields are JSON numbers; the payee document can be masked by merchant configuration.
+
+### Behavior and validation
+
+The resolved payee is cached for one minute under `ref_id` and bound to the initiating ISPB and account number. This reference is preflight state, not an idempotency key.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` for a missing key.
+* `400` or `4001001` for invalid key data.
+* `4001096` for an inactive or deleted key.
+* `4003008` for missing account context.
+* `501` for a lookup RPC failure.
+* `500` for a cache or internal failure.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/transfers/pix/key-initiate" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"pix_key":"demo.receiver@example.test"}'
+```
+
+### Example response
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "ref_id": "11111111-2222-4333-8444-555555555555",
+    "payee": {
+      "name": "Demo Receiver",
+      "document_id": "***-demo",
+      "document_type": 1,
+      "bank_account": "DEMO-RECEIVER-01",
+      "bank_account_type": 1,
+      "bank_branch": "0001",
+      "bank_code": "00000000",
+      "bank_name": "Demo Bank"
+    },
+    "settlement_id": "demo-settlement-key-001"
+  },
+  "time": 1767225600000
+}
+```

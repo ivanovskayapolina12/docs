@@ -1,0 +1,47 @@
+---
+title: "Send TED to Bank Account"
+description: "Send a manual TED transfer to supplied bank details."
+---
+
+Create a manual TED payment from the authenticated account to supplied bank-account details.
+
+### Endpoint
+
+`POST /v3/transfers/ted/bank-account`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+Use the same amount and payee fields as manual PIX. Optional numeric `purpose` is present in the HTTP contract but the current service does not copy it downstream. Optional `currency` is ignored; `memo` and `merchant_order_id` have no local format check on this route.
+
+### Success data
+
+`merchant_order_id`, `txn_id`, and numeric `txn_status`; declared payer/payee fields are not populated.
+
+### Behavior and validation
+
+The service sends a manual TED payment in BRL. Same-bank transfers are rejected after bank-code normalization. No endpoint-specific idempotency key exists.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* Manual-transfer required-field, amount, and bank-code errors.
+* `4001` for a same-bank payee; `4003014` payment failure plus mapped provider errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/transfers/ted/bank-account --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"amount":"50.00","merchant_order_id":"demo-ted-001","purpose":5,"payee":{"name":"Demo Supplier","document_id":"DEMO-DOC-002","document_type":2,"bank_account":"DEMO-SUPPLIER-02","bank_account_type":1,"bank_branch":"0001","bank_code":"87654321"}}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"merchant_order_id":"demo-ted-001","txn_id":"demo-ted-txn-001","txn_status":1},"time":1767225600000}
+```

@@ -1,0 +1,77 @@
+---
+title: "Initiate PIX Transfer by QR Code"
+description: "Decode a PIX QR code and create a confirmation reference."
+---
+
+Decode an active PIX QR payload and create a temporary reference for confirmation.
+
+### Endpoint
+
+```
+POST /v3/transfers/pix/qr-code-initiate
+```
+
+### Authentication and target
+
+Use an ACCOUNT credential for its bound account, or a USER credential with both `X-ISPB` and `X-Account-Number`. If an ACCOUNT credential sends those headers, both must be present and must match its bound account. PLATFORM credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits `X-ISPB` and `X-Account-Number`. If `X-Client-ID` identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating `X-Signature`.
+
+### Request body
+
+| Field             | Required | Type   | Validation                |
+| ----------------- | -------- | ------ | ------------------------- |
+| `qr_code_payload` | Yes      | string | Non-empty PIX QR payload. |
+
+### Success data
+
+`ref_id`, `pix_key`, numeric `pix_key_type`, resolved payee, `qr_code_id`, integer `expires`, decimal-string `amount`, `settlement_id`, numeric `qr_code_type`, `currency`, and `memo`. The declared `qr_code_status` remains its zero value because the current mapper does not assign it.
+
+### Behavior and validation
+
+The decoded QR must be ACTIVE. The reference is account-bound and cached for five minutes. `expires` is passed through from the decoder; this layer does not establish its unit.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` for a missing payload.
+* `4001015` for an expired or invalid QR code.
+* `4001096` for an inactive or deleted PIX key.
+* Mapped decoder or provider errors.
+* `501` or `500` for dependency failures.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/transfers/pix/qr-code-initiate" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"qr_code_payload":"00020101021226DEMO-PIX-QR-PAYLOAD"}'
+```
+
+### Example response
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "ref_id": "66666666-7777-4888-8999-aaaaaaaaaaaa",
+    "pix_key": "demo.receiver@example.test",
+    "pix_key_type": 3,
+    "qr_code_id": "demo-qr-001",
+    "expires": 300,
+    "amount": "12.34",
+    "settlement_id": "demo-settlement-qr-001",
+    "qr_code_type": 12,
+    "currency": "BRL",
+    "memo": "Demo invoice"
+  },
+  "time": 1767225600000
+}
+```

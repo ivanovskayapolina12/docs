@@ -1,0 +1,51 @@
+---
+title: "Send PIX to Bank Account"
+description: "Send a manual PIX transfer to supplied bank details."
+---
+
+Create a manual PIX payment from the authenticated account to supplied bank-account details.
+
+### Endpoint
+
+`POST /v3/transfers/pix/bank-account`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+`amount` and `payee` are required. Amount is a positive decimal string with at most two places.
+
+Required payee fields: `name`, `document_id`, `bank_account`, `bank_branch`, and `bank_code`. Optional payee fields are numeric `document_type`, numeric `bank_account_type`, and `bank_name`. The bank code is whitespace-stripped, uppercased, left-padded to eight characters, then checked as eight ASCII digits/uppercase letters.
+
+Optional top-level fields: `currency`, `memo`, and `merchant_order_id`. Currency is ignored and this route does not locally validate the merchant order ID.
+
+### Success data
+
+`merchant_order_id`, `txn_id`, and numeric `txn_status`. Declared party objects are not populated by the current mapper.
+
+### Behavior and validation
+
+The downstream payment is manual PIX in BRL. This route exposes no endpoint-specific idempotency key.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` missing amount/payee fields; `4002` invalid amount or bank code.
+* `4003014` payment RPC failure and mapped provider payment errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/transfers/pix/bank-account --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"amount":"25.00","currency":"USD","merchant_order_id":"demo-manual-pix-001","memo":"Demo supplier payment","payee":{"name":"Demo Supplier","document_id":"DEMO-DOC-001","document_type":2,"bank_account":"DEMO-SUPPLIER-01","bank_account_type":1,"bank_branch":"0001","bank_code":"1234"}}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"merchant_order_id":"demo-manual-pix-001","txn_id":"demo-pix-txn-003","txn_status":1},"time":1767225600000}
+```
