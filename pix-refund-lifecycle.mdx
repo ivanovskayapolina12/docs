@@ -1,0 +1,26 @@
+---
+title: "PIX Refund Lifecycle"
+description: "Understand refund eligibility, idempotency, and asynchronous status changes."
+---
+
+PIX refunds are asynchronous and account-scoped. Use the flow below instead of treating refund creation as an immediate final result.
+
+### Lifecycle
+
+1. Call `POST /v3/refunds/pix` with the original inbound PIX settlement ID, a unique merchant order ID, and the decimal-string amount.
+2. A successful creation starts at numeric status `1` (PENDING). The service queues background processing.
+3. Poll `POST /v3/refunds/status/check` with a new signature nonce each time. This operation may refresh and persist the rail status.
+4. Stop on `2` (COMPLETED) or `3` (FAILED). Use `POST /v3/refunds/details` when the full accessible projection is needed.
+
+### Eligibility implemented today
+
+* The original transaction must be an inbound PIX payment owned by the selected account and still refundable.
+* It must be no more than 90 days old.
+* The amount must be positive, have at most two decimal places, and not exceed the remaining refundable amount.
+* The first six characters of `merchant_order_id` must be a valid UTC `YYMMDD` date around the current UTC day, with a ±1-hour boundary allowance.
+
+### Idempotency and retries
+
+The create route stores the merchant order ID for 48 hours. A duplicate returns business code `4001013`. This is separate from signature replay protection: every retry or poll still needs a fresh timestamp and nonce.
+
+All normal API results—including validation and business failures—use HTTP 200 with the JSON envelope. Branch on outer `code`, not HTTP status or localized `message`. Malformed JSON is the exception and can return raw HTTP 400 text.

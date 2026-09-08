@@ -1,0 +1,75 @@
+---
+title: "API Reference"
+description: "Implementation-backed reference for 40 Open API v3 operations."
+---
+
+Implementation-backed reference for Pagsmile Open API v3 operations.
+
+### Authentication model
+
+`X-Client-ID` identifies one of three credential owners. The credential owner determines which operations are allowed and whether an account target is required.
+
+#### USER credential
+
+For an account-level operation, send both `X-ISPB` and `X-Account-Number`. The target account must be active and belong to the authenticated user. Do not send the pair for user-owned managed-account operations.
+
+#### ACCOUNT credential
+
+The credential-bound account is used when the target pair is absent. If the pair is sent, both values must exactly match the bound account.
+
+#### PLATFORM credential
+
+Platform credentials are limited to platform-level operations. Account-level endpoints reject them, and platform operations do not accept account-target headers.
+
+### Conditional account-target headers
+
+* `X-ISPB` — target bank ISPB.
+* `X-Account-Number` — target account number.
+
+Send both headers together with non-empty values on permitted routes. A request is rejected when only one is present, either value is empty, or the target does not satisfy the credential rules.
+
+### Request signing
+
+Every request is signed with HMAC-SHA256. Always send `Content-Type`, `X-Client-ID`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. `X-Content-Hash` is optional.
+
+#### StringToSign
+
+Join the following values with a line feed (`\n`) in this order:
+
+1. Uppercase HTTP method
+2. Request path
+3. Canonical query string
+4. Canonical headers
+5. Content hash
+6. Timestamp
+7. Nonce
+
+#### Canonical query
+
+Parse all query parameters, sort keys lexically, apply URL query escaping to every key and value, and join pairs as `key=value&key2=value2`.
+
+#### Canonical headers
+
+Always include these lowercase names:
+
+* `content-type`
+* `x-client-id`
+* `x-nonce`
+* `x-timestamp`
+
+Include `x-content-hash` only when a non-empty `X-Content-Hash` header is sent. When the account-target pair is sent, also include `x-account-number` and `x-ispb`.
+
+Trim every value, sort the included lowercase header names lexically, and join the lines as `key:value` with a line feed between lines. The canonical values must exactly match the headers received by the server.
+
+#### Content hash
+
+If `X-Content-Hash` is supplied, use that value in the signature and ensure it equals the lowercase SHA-256 hex digest of the exact raw request body. If the header is omitted, the server computes the body hash; do not include `x-content-hash` in canonical headers.
+
+### Validation requirements
+
+* Use a unique nonce for each client request.
+* Send the timestamp as Unix milliseconds within the accepted clock-skew window.
+* Call from an IP address in the configured allowlist.
+* Sign the exact path, query, headers, and raw body that are transmitted.
+
+Follow each endpoint’s **Authentication and target** section for the allowed credential owners and account-target behavior.

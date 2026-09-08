@@ -1,0 +1,49 @@
+---
+title: "Webhooks"
+description: "Receive signed transaction, KYB, and MED event notifications."
+---
+
+Pagsmile sends webhook events as signed HTTP POST requests with a JSON body. Verify the signature, process duplicate deliveries safely, and return HTTP 200 only after the event has been accepted.
+
+### Event families
+
+#### Pix transactions
+
+`PIX_PAYMENT_IN`, `PIX_PAYMENT_OUT`, `PIX_REFUND_IN`, and `PIX_REFUND_OUT`. Delivery scope: ACCOUNT or USER.
+
+#### KYB
+
+`VA_ACCOUNT_KYB` is delivered to USER-owned subscriptions for virtual accounts. `MASTER_ACCOUNT_KYB` is delivered to PLATFORM-owned subscriptions for master accounts.
+
+#### MED processing
+
+`MED_CASE_CREATED`, `MED_CASE_STATUS_CHANGED`, `INFRACTION_RECEIVED`, and `INFRACTION_STATUS_CHANGED`. Delivery scope: USER or ACCOUNT.
+
+See the dedicated Transaction Webhooks, KYB Webhooks, MED Processing Webhooks, Delivery and Retries, and Signature Verification pages for payload and receiver details.
+
+### Webhook Management API event values
+
+The `/v3/webhooks` management API currently accepts these numeric event values:
+
+* `1` — configure `PIX_IN`; callback event `PIX_PAYMENT_IN`.
+* `2` — configure `PIX_OUT`; callback event `PIX_PAYMENT_OUT`.
+* `3` — configure `REFUND_IN`; callback event `PIX_REFUND_IN`.
+* `4` — configure `REFUND_OUT`; callback event `PIX_REFUND_OUT`.
+* `5` — configure and receive `VA_ACCOUNT_KYB`.
+* `6` — configure and receive `MASTER_ACCOUNT_KYB`.
+
+MED callbacks use the `MED_PROCESSING` subscription family. This family is not represented by the numeric values currently accepted by `/v3/webhooks`.
+
+For management endpoints and owner-specific rules, see Webhook Management.
+
+### Receiver checklist
+
+* Expose a stable callback URL.
+* Read and retain the exact raw request body.
+* Verify `X-Content-Hash` and `X-Signature` before parsing JSON.
+* Reject stale timestamps and replayed nonces.
+* Store the event with the documented idempotency key.
+* Return HTTP 200 after the event is durably accepted.
+* Process asynchronously and tolerate duplicate or out-of-order delivery.
+
+Use a callback that returns HTTP 200 directly. Transaction deliveries currently follow supported HTTP redirects and evaluate the final response, while KYB and MED deliveries treat a redirect response as a failed acknowledgement. Do not rely on redirects.

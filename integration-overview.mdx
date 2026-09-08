@@ -1,0 +1,92 @@
+---
+title: "Integration Overview"
+description: "Sign, send, and process Open API v3 requests."
+---
+
+Pagsmile Open API v3 uses signed JSON requests. It does not use OAuth bearer tokens. Every public v3 operation documented here is an HTTP POST.
+
+### Credential types and account targeting
+
+* **PLATFORM credential** — for platform-level master-account operations. It cannot select or operate an account through account-target headers.
+* **USER credential** — for user-owned operations. For an account-level operation, send both `X-ISPB` and `X-Account-Number` to select the account.
+* **ACCOUNT credential** — bound to one account. Account-target headers are optional; if sent, both must exactly match the credential-bound account.
+
+#### Account-targeting rules
+
+* `X-ISPB` and `X-Account-Number` must be sent together with non-empty values.
+* The selected account must be active, belong to the authenticated user, and have a valid account hierarchy.
+* PLATFORM credentials are rejected on account-level endpoints.
+* User-owned managed-account operations and platform operations do not accept account-target headers.
+* When the pair is sent, include both exact trimmed values in the HMAC canonical headers.
+
+#### USER credential example for an account-level operation
+
+Send both account-target headers before calculating `X-Signature`:
+
+```
+Content-Type: application/json
+X-Client-ID: ak_user_demo
+X-ISPB: 12345678
+X-Account-Number: 00012345
+X-Timestamp: 1710000000000
+X-Nonce: 00112233445566778899aabbccddeeff
+X-Content-Hash: LOWERCASE_SHA256_OF_RAW_BODY
+X-Signature: LOWERCASE_HMAC_SHA256_SIGNATURE
+```
+
+When `X-Content-Hash` is sent, the canonical header names are ordered lexically as `content-type`, `x-account-number`, `x-client-id`, `x-content-hash`, `x-ispb`, `x-nonce`, and `x-timestamp`. Omit `x-content-hash` only when that request header is not sent.
+
+### 1. Prepare the request
+
+Serialize the JSON body exactly once and keep the raw bytes. Generate a fresh nonce for every call and a Unix timestamp in milliseconds.
+
+Required headers:
+
+* `Content-Type: application/json`
+* `X-Client-ID`
+* `X-Timestamp`
+* `X-Nonce`
+* `X-Signature`
+
+Optional headers:
+
+* `X-Content-Hash` — when present, it must equal the lowercase hexadecimal SHA-256 digest of the exact raw body.
+* `X-ISPB` and `X-Account-Number` — send them together only when the endpoint and credential policy allow explicit account targeting.
+
+Requests outside the five-minute timestamp window are rejected. Nonces are retained for ten minutes to prevent replay.
+
+### 2. Build the canonical string
+
+Join these seven components with a single line feed and do not add a trailing line feed:
+
+```
+UPPERCASE_METHOD
+normalized_path
+canonical_query
+canonical_headers
+content_hash
+timestamp
+nonce
+```
+
+Canonical headers always include lowercase `content-type`, `x-client-id`, `x-nonce`, and `x-timestamp`. Include lowercase `x-content-hash`, `x-account-number`, and `x-ispb` only when those headers are sent. Trim values and sort header names lexically.
+
+For query parameters, sort names lexically, preserve the original value order for repeated names, and encode names and values with Go `url.QueryEscape` semantics. An empty query still occupies its blank line.
+
+### 3. Sign
+
+Calculate HMAC-SHA256 over the canonical string using the API secret and encode the result as 64 lowercase hexadecimal characters. Never send the API secret in the request.
+
+### 4. Read the response
+
+Every response uses the outer envelope:
+
+```json
+{"code":200,"message":"success","data":{},"time":1710000000000}
+```
+
+Use the HTTP status and outer `code` to determine whether the call succeeded. Historical nested `error` or `result` fields do not replace the outer envelope.
+
+### 5. Operate safely
+
+Use a new timestamp, nonce, body hash, and signature for every retry. Treat monetary values as decimal strings. Keep credentials for different endpoints separate, and never log API secrets or one-time credential values.

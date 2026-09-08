@@ -1,72 +1,153 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Pagsmile IP",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
+    "primary": "#16803D",
+    "light": "#22C55E",
     "dark": "#15803D"
   },
-  "favicon": "/favicon.svg",
   "navigation": {
-    "pages": [
+    "groups": [
       {
-        "group": "Getting Started",
+        "group": "Getting started",
         "pages": [
           "index",
-          "quickstart"
+          "getting-started",
+          {
+            "group": "Integration Overview",
+            "pages": [
+              "integration-overview",
+              "integration-overview/error-catalog",
+              "integration-overview/object-and-enums-references"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api-reference",
+          "api-reference/environments",
+          {
+            "group": "Bank Account & Statements",
+            "pages": [
+              "api-reference/bank-account-and-statements",
+              "api-reference/bank-account-and-statements/get-bank-account",
+              "api-reference/bank-account-and-statements/get-statements"
+            ]
+          },
+          {
+            "group": "Transfers",
+            "pages": [
+              "api-reference/transfers",
+              "api-reference/transfers/initiate-pix-transfer-by-key",
+              "api-reference/transfers/confirm-pix-transfer-by-key",
+              "api-reference/transfers/initiate-pix-transfer-by-qr-code",
+              "api-reference/transfers/confirm-pix-transfer-by-qr-code",
+              "api-reference/transfers/send-pix-to-bank-account",
+              "api-reference/transfers/send-ted-to-bank-account",
+              "api-reference/transfers/get-transfer-details",
+              "api-reference/transfers/check-transfer-status"
+            ]
+          },
+          {
+            "group": "Charges",
+            "pages": [
+              "api-reference/charges",
+              "api-reference/charges/get-charge-details"
+            ]
+          },
+          {
+            "group": "Refunds",
+            "pages": [
+              "api-reference/refunds",
+              "api-reference/refunds/create-pix-refund",
+              "api-reference/refunds/get-refund-details",
+              "api-reference/refunds/check-refund-status"
+            ]
+          },
+          {
+            "group": "QR Codes",
+            "pages": [
+              "api-reference/qr-codes",
+              "api-reference/qr-codes/generate-dynamic-qr-code",
+              "api-reference/qr-codes/generate-static-qr-code",
+              "api-reference/qr-codes/get-qr-code-details"
+            ]
+          },
+          {
+            "group": "MED & Infractions",
+            "pages": [
+              "api-reference/med-and-infractions",
+              "api-reference/med-and-infractions/create-med-case",
+              "api-reference/med-and-infractions/list-med-cases",
+              "api-reference/med-and-infractions/get-med-case",
+              "api-reference/med-and-infractions/cancel-med-case",
+              "api-reference/med-and-infractions/list-infractions",
+              "api-reference/med-and-infractions/get-infraction"
+            ]
+          },
+          {
+            "group": "PIX Keys",
+            "pages": [
+              "api-reference/pix-keys",
+              "api-reference/pix-keys/create-pix-key",
+              "api-reference/pix-keys/delete-pix-key"
+            ]
+          },
+          {
+            "group": "Webhook Management",
+            "pages": [
+              "api-reference/webhook-management",
+              "api-reference/webhook-management/create-webhook",
+              "api-reference/webhook-management/get-webhook",
+              "api-reference/webhook-management/update-webhook",
+              "api-reference/webhook-management/delete-webhook",
+              "api-reference/webhook-management/list-webhooks"
+            ]
+          },
+          {
+            "group": "Master Accounts",
+            "pages": [
+              "api-reference/master-accounts",
+              "api-reference/master-accounts/create-master-account",
+              "api-reference/master-accounts/get-master-account",
+              "api-reference/master-accounts/list-master-accounts",
+              "api-reference/master-accounts/update-master-account"
+            ]
+          },
+          {
+            "group": "Managed Accounts",
+            "pages": [
+              "api-reference/managed-accounts",
+              "api-reference/managed-accounts/create-managed-account",
+              "api-reference/managed-accounts/get-managed-account",
+              "api-reference/managed-accounts/list-managed-accounts",
+              "api-reference/managed-accounts/update-managed-account",
+              "api-reference/managed-accounts/get-managed-account-credential",
+              "api-reference/managed-accounts/rotate-managed-account-credentials"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Webhooks",
+        "pages": [
+          "webhooks",
+          "webhooks/signature-verification",
+          "webhooks/transaction-webhooks",
+          "webhooks/kyb-webhooks",
+          "webhooks/med-processing-webhooks",
+          "webhooks/delivery-and-retries"
+        ]
+      },
+      {
+        "group": "PIX Refund Lifecycle",
+        "pages": [
+          "pix-refund-lifecycle"
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
     ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
   }
 }
