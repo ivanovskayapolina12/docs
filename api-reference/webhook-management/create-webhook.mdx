@@ -1,0 +1,61 @@
+---
+title: "Create Webhook"
+description: "Register a callback subscription."
+---
+
+Register one outbound event type with a callback URL in the authenticated owner scope.
+
+### Endpoint
+
+```
+POST /v3/webhooks/create
+```
+
+### Authentication and target
+
+Access is resolved through the authenticated credential owner. Use an account credential only for Pix transaction and refund events on its bound account. Use a user credential with `account_number` for transaction and refund events, or omit `account_number` for `VA_ACCOUNT_KYB`. Use a platform credential only for `MASTER_ACCOUNT_KYB` and omit `account_number`.
+
+An account-scoped `VA_ACCOUNT_KYB` registration is not a supported delivery configuration and does not receive VA\_ACCOUNT\_KYB events.
+
+Do not send `X-ISPB` or `X-Account-Number` with a platform or user credential on this management endpoint. An account credential may omit both headers; if sent, both are required and must match its bound account.
+
+### Request body
+
+| Field            | Required    | Description                                                               |
+| ---------------- | ----------- | ------------------------------------------------------------------------- |
+| `event_type`     | Yes         | Webhook event enum.                                                       |
+| `callback_url`   | Yes         | Callback URL. Whitespace is trimmed and the value must not be empty.      |
+| `account_number` | Conditional | Required or forbidden according to the event and credential-owner policy. |
+
+### Success data
+
+`webhook_id`, `event_type`, `callback_url`, `status`, and `created_at` as Unix milliseconds.
+
+### Behavior and validation
+
+Creation is synchronous. The request has no caller-supplied idempotency key. The current v3 layer validates a non-empty callback value but does not itself enforce URL syntax or HTTPS.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `field_required` for a missing event, callback, or conditionally required account.
+* `permission_denied` for an unsupported owner, event, or account combination.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/webhooks/create" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"event_type":1,"callback_url":"https://webhook.example.test/pagsmile","account_number":"acct_demo_001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"webhook_id":"wh_demo_001","event_type":1,"callback_url":"https://webhook.example.test/pagsmile","status":1,"created_at":1710000000000},"time":1710000000100}
+```

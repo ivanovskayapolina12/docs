@@ -1,0 +1,60 @@
+---
+title: "Update Webhook"
+description: "Update a webhook callback or status."
+---
+
+Change a webhook callback URL, its enablement state, or both.
+
+### Endpoint
+
+`POST /v3/webhooks/update`
+
+### Authentication and target
+
+Access is resolved through the authenticated credential owner. Account credentials can target only their own account. User credentials must supply `account_number` for transaction events and omit it for VA Account KYB. Platform credentials can manage only Master Account KYB and must omit `account_number`. See **Webhook Management** for the complete event/owner matrix.
+
+Do not send X-ISPB or X-Account-Number with a platform or user credential. An account credential may omit both headers; if sent, both are required and must match its bound account.
+
+### Request body
+
+| Field             | Required    | Description                                      |
+| ----------------- | ----------- | ------------------------------------------------ |
+| `event_type`      | Yes         | Webhook event enum.                              |
+| `subscription_id` | No          | Exact subscription selector; use a returned ID.  |
+| `callback_url`    | No          | New trimmed, non-empty callback URL.             |
+| `status`          | No          | numeric enum: `1` (ACTIVE) or `2` (INACTIVE).    |
+| `account_number`  | Conditional | Required or forbidden by the owner/event policy. |
+
+### Success data
+
+The updated `webhook` object with `webhook_id`, `event_type`, `callback_url`, `status`, `created_at`, and `updated_at`.
+
+### Behavior and validation
+
+If both callback URL and status are supplied, the URL update is applied before enable/disable. The API has no version precondition and does not reject an otherwise empty patch at the v3 handler layer.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `field_invalid` for an unsupported status or a supplied blank callback.
+* `permission_denied` for an unsupported owner/event/account combination.
+* `not_found` when the subscription is not visible.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/webhooks/update" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"event_type":1,"subscription_id":"wh_demo_001","status":2,"account_number":"acct_demo_001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"webhook":{"webhook_id":"wh_demo_001","event_type":"PIX_PAYMENT_IN","callback_url":"https://webhook.example.test/pagsmile","status":2,"updated_at":1710000200000}},"time":1710000200100}
+```

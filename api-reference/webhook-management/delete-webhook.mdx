@@ -1,0 +1,58 @@
+---
+title: "Delete Webhook"
+description: "Disable a webhook subscription."
+---
+
+Disable a webhook subscription in the authenticated owner scope.
+
+### Endpoint
+
+`POST /v3/webhooks/delete`
+
+### Authentication and target
+
+Access is resolved through the authenticated credential owner. Account credentials can target only their own account. User credentials must supply `account_number` for transaction events and omit it for VA Account KYB. Platform credentials can manage only Master Account KYB and must omit `account_number`. See **Webhook Management** for the complete event/owner matrix.
+
+Do not send X-ISPB or X-Account-Number with a platform or user credential. An account credential may omit both headers; if sent, both are required and must match its bound account.
+
+### Request body
+
+| Field             | Required    | Description                                      |
+| ----------------- | ----------- | ------------------------------------------------ |
+| `event_type`      | Yes         | Webhook event enum.                              |
+| `subscription_id` | No          | Exact subscription selector; use a returned ID.  |
+| `account_number`  | Conditional | Required or forbidden by the owner/event policy. |
+
+### Success data
+
+`webhook_id` and `deleted_at` (Unix milliseconds).
+
+### Behavior and validation
+
+Deletion is implemented as disabling the configuration; it does not physically erase the record. The request has no caller-supplied idempotency key.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `field_required` for missing required context.
+* `permission_denied` for an unsupported owner/event/account combination.
+* `not_found` when the subscription is not visible.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/webhooks/delete" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"event_type":1,"subscription_id":"wh_demo_001","account_number":"acct_demo_001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"webhook_id":"wh_demo_001","deleted_at":1710000300000},"time":1710000300100}
+```
