@@ -1,0 +1,75 @@
+---
+title: "Object & Enums References"
+description: "JSON types, shared objects, enum values, and string exceptions."
+---
+
+This reference documents the JSON shapes shared across the 40 Open API v3 routes in this Space.
+
+### Runtime JSON rules
+
+* The service serializes generated Go structs with Sonic, not protobuf JSON. Enum fields are native JSON numbers.
+* Integer timestamp fields are JSON numbers. Explicit onboarding, webhook, and MED lifecycle timestamps use Unix milliseconds. Preserve other integer time fields without guessing a unit unless the endpoint states one.
+* Monetary values—amounts, fees, balances, frozen amounts, limits, and MED amounts—are decimal strings. Use decimal arithmetic.
+* Generated zero values can appear as `0`, `""`, `false`, `null`, or `[]` when a mapper does not populate a declared field.
+* Optional request fields are presence-aware. Omitting a field differs from sending `0`, `false`, or `""`.
+* Unknown JSON members are not rejected in strict mode today. Send only documented fields and do not rely on unknown-field acceptance.
+
+### Shared objects
+
+* **`TxnParty`** — `name`, `document_id`, numeric `document_type`, `bank_account`, numeric `bank_account_type`, `bank_branch`, `bank_code`, `bank_name`
+* **`TxnDetails`** — parties; transaction/settlement/merchant IDs; numeric `txn_status` and `source_type`; decimal-string amount/fees; currency, memo, rejection reason; integer time fields; PIX/TED details; original settlement ID
+* **Statement item** — IDs, decimal-string amount, memo, numeric created time/payment/status/type fields, `is_credit`, parties, and parent transaction references
+* **`AccountReferenceV3`** — `ispb`, `account_number`
+* **Bank account** — identifiers; decimal-string balances; currency; `pix_keys`, `limit_config`, `webhooks`, `fee_configs`
+* **Onboarding account** — reference and holder data, status/compliance status, session ID, trading name, notification email, millisecond lifecycle timestamps, and account reference; managed accounts add numeric model and optional linked account
+* **`WebhookInfo`** — `webhook_id`, string `event_type`, `callback_url`, numeric `status`, numeric lifecycle times, account/subscription IDs, suspend reason
+* **Pagination** — numeric `page`, `page_size`, `total`, `total_pages`; statement cursor has numeric `timestamp`, string `id`, numeric `direction`
+* **MED models** — stable IDs, numeric canonical status, display text, decimal-string amounts, millisecond lifecycle/deadline values, original transaction/parties, timeline, infraction and refund projections
+
+Party document IDs can be masked according to merchant configuration. A missing or `null` generated object means the current mapper did not populate it; it is not proof that the field can never appear.
+
+### Core enums
+
+* **Document type** — 0 UNSPECIFIED, 1 CPF, 2 CNPJ
+* **Bank account type** — 0 UNSPECIFIED, 1 CHECKING, 2 SALARY, 3 SAVINGS, 4 PAYMENT
+* **PIX key type** — 0 UNSPECIFIED, 1 CPF, 2 CNPJ, 3 EMAIL, 4 PHONE, 5 EVP
+* **PIX key status** — 0 UNSPECIFIED, 1 ACTIVE, 2 INACTIVE, 3 BLOCKED, 4 DELETED
+* **Base status** — 0 UNSPECIFIED, 1 ACTIVE, 2 INACTIVE
+* **Transaction status** — 0 UNSPECIFIED, 1 PENDING, 2 COMPLETED, 3 FAILED, 4 CANCELLED, 5 PROCESSING, 6 REFUNDED, 7 PARTIALLY\_REFUNDED, 8 DISPUTED
+* **Source type** — 0 UNSPECIFIED, 1 APP, 2 API, 3 SCHEDULE, 4 BATCH
+* **Transaction type** — 0 UNSPECIFIED, 1 PAYMENT, 2 REFUND, 3 TRANSFER, 4 WITHDRAWAL, 5 DEPOSIT, 6 DISPUTE
+* **Payment method** — 0 UNSPECIFIED, 1 PIX, 2 CARD, 3 TED, 4 BOLETO
+* **Payment variant** — 0 UNSPECIFIED, 1 PIX\_MANUAL, 2 PIX\_KEY, 3 STATIC\_QRCODE, 4 DYNAMIC\_QRCODE, 5 AUTO\_PIX, 6 TED\_MANUAL
+* **QR status** — 0 UNSPECIFIED, 1 ACTIVE, 2 COMPLETED, 3 PAYEE\_REMOVED, 4 PSP\_REMOVED
+* **QR type** — 0 UNSPECIFIED, 1 NOT\_SET, 11 STATIC, 12 DYNAMIC\_INSTANT\_PAYMENT, 13 DYNAMIC\_EXPIRE\_PAYMENT, 14 COMPOSITE\_PAYMENT
+* **Funds type** — 0 UNSPECIFIED, 1 CREDIT, 2 DEBIT
+* **Pagination direction** — 0 UNSPECIFIED, 1 FORWARD, 2 BACKWARD
+
+TED purpose values: 0 UNSPECIFIED, 1 TAX, 2 PUBLIC\_UTILITY, 3 DIVIDENDS, 4 SALARY, 5 SUPPLIER, 6 PROFESSIONAL\_FEES, 7 RENT\_CONDOMINIUM, 8 TRADE\_BILLS, 9 SCHOOL\_TUITION, 10 ACCOUNT\_CREDIT, 11 BROKERAGE, 12 REGISTRY\_BANK\_SLIP, 13 COLLECTION\_FEES, 14 PROTEST\_REGISTRY, 15 CARD\_OPERATOR\_SETTLEMENT.
+
+### Webhook and onboarding enums
+
+* Webhook request event type: 0 UNSPECIFIED, 1 PIX\_IN, 2 PIX\_OUT, 3 REFUND\_IN, 4 REFUND\_OUT, 5 VA\_ACCOUNT\_KYB, 6 MASTER\_ACCOUNT\_KYB.
+* Managed account model: 0 UNSPECIFIED, 1 MOR, 2 VA, 3 PA.
+* Compliance status: 0 UNSPECIFIED, 1 PENDING, 2 PENDING\_SUBMISSION, 3 APPROVED, 4 REJECTED, 5 EXPIRED, 6 CREATION\_FAILED, 7 REVIEWING, 8 ERROR, 9 FORCE\_APPROVED.
+* Master/managed account status: 0 UNSPECIFIED, 1 PENDING, 2 ACTIVE, 3 FROZEN, 4 CLOSED, 5 REJECTED, 6 EXPIRED, 7 PENDING\_SUBMISSION.
+* Compliance mode: 0 UNSPECIFIED, 1 HOSTED\_LINK, 2 API\_BODY, 3 PROVIDER\_SESSION.
+* Login account type: 0 UNSPECIFIED, 1 EMAIL, 2 PHONE, 3 CPF, 4 CNPJ.
+
+### MED enums
+
+* Case status: 0 UNSPECIFIED, 1 CREATED, 2 TRACKED, 3 AWAITING\_ANALYSIS, 4 ANALYZED, 5 RETURN\_PROCESSING, 6 COMPLETED, 7 CANCELLED, 8 FAILED.
+* Infraction task status: 0 UNSPECIFIED, 1 RECEIVED, 2 BLOCKING\_PENDING, 3 BLOCKED, 4 ANALYSIS\_PENDING, 5 CLOSED\_AGREED, 6 CLOSED\_DISAGREED, 7 CANCELLED, 8 FAILED.
+* Refund task status: 0 UNSPECIFIED, 1 RECEIVED, 2 PROCESSING, 3 ACCEPTED\_FULL, 4 ACCEPTED\_PARTIAL, 5 REJECTED, 6 CLOSED, 7 CANCELLED, 8 FAILED.
+* Flow type: 0 UNSPECIFIED, 1 AUTOMATED, 2 MANUAL.
+* Original fraud situation: 0 UNSPECIFIED, 1 SCAM, 2 ACCOUNT\_TAKEOVER, 3 COERCION, 4 SOCIAL\_ENGINEERING, 5 OTHER, 6 UNKNOWN.
+* Timeline event: 0 UNSPECIFIED, 1 CASE\_CREATED, 2 CASE\_TRACKED, 3 ANALYSIS\_AWAITING, 4 ANALYZED, 5 REFUND\_TRIGGERED, 6 REFUND\_UPDATED, 7 CASE\_COMPLETED, 8 CASE\_CANCELLED, 9 INFRACTION\_RECEIVED, 10 INFRACTION\_CLOSED, 11 REFUND\_REQUEST\_RECEIVED, 12 REFUND\_REQUEST\_CLOSED, 13 SLA\_BREACHED.
+
+### Intentional string exceptions
+
+* `MasterAccountInfo.document_type` and `ManagedAccountInfo.document_type` are `"CPF"` or `"CNPJ"`, unlike numeric request/compliance and party document-type fields.
+* Webhook create requests and create responses use numeric event types. `WebhookInfo.event_type` in get/list/update responses is a string: `PIX_PAYMENT_IN`, `PIX_PAYMENT_OUT`, `PIX_REFUND_IN`, `PIX_REFUND_OUT`, `VA_ACCOUNT_KYB`, or `MASTER_ACCOUNT_KYB`.
+* Every fee-config field is a string, including `fee_kind`.
+* MED `status_display` and infraction `freeze_status` are human-facing strings. Use adjacent numeric status fields for program logic.
+
+Dynamic QR request `expires` is a duration in seconds and defaults to 7200; it is not an epoch timestamp.

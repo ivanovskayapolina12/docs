@@ -1,0 +1,76 @@
+---
+title: "Error Catalog"
+description: "Handle Open API v3 envelopes and business codes correctly."
+---
+
+All Open API v3 handlers use one outer result contract during normal processing.
+
+### Response envelope
+
+```json
+{"code":200,"message":"success","data":{},"time":1767225600000}
+```
+
+* `code` is the authoritative business result. `200` means success; every other value means failure.
+* Every enveloped result currently uses HTTP 200, including validation, authentication, permission, business, and dependency failures.
+* On an enveloped failure, `data` is `null`.
+* `message` is localized display text and can be replaced by a normalized upstream public message. Never branch on it.
+* A legacy error object nested inside successful `data` does not change the outer result.
+* Malformed JSON, form, path, or query input can return non-envelope `text/plain` with HTTP 400. A recovered panic or unhandled wrapper failure is non-envelope text, normally HTTP 500.
+
+### Business codes
+
+| Code                 | Meaning                                                                          | HTTP transport |
+| -------------------- | -------------------------------------------------------------------------------- | -------------- |
+| `200`                | Success                                                                          | 200            |
+| `400`                | Invalid request or validation failure                                            | 200            |
+| `4000`               | Required field missing                                                           | 200            |
+| `4001`               | Invalid field value                                                              | 200            |
+| `4002`               | Invalid field format                                                             | 200            |
+| `4003`               | Field value out of range                                                         | 200            |
+| `4001001`            | Invalid PIX key                                                                  | 200            |
+| `4001002 / 4001003`  | Invalid account / account type                                                   | 200            |
+| `4001004`            | Invalid amount or amount limit                                                   | 200            |
+| `4001010`            | Invalid QR code                                                                  | 200            |
+| `4001011 / 4001012`  | Request expired / invalid time range                                             | 200            |
+| `4001013`            | Already processed or duplicate request                                           | 200            |
+| `4001014 / 4001015`  | QR already used / expired                                                        | 200            |
+| `4001090`            | PIX key already linked                                                           | 200            |
+| `4001092`            | KYC/KYB status invalid or incomplete                                             | 200            |
+| `4001093`            | Self-payment is not allowed                                                      | 200            |
+| `4001094`            | PIX key linked by a third party                                                  | 200            |
+| `4001096`            | PIX key inactive or deleted                                                      | 200            |
+| `4001998 / 4001999`  | Limit reached / insufficient funds                                               | 200            |
+| `4002003`            | Information or application already registered                                    | 200            |
+| `4003003`            | Transaction detail not found                                                     | 200            |
+| `4003005`            | Refund processing failed or amount rejected                                      | 200            |
+| `4003008`            | Authentication required                                                          | 200            |
+| `4003012`            | PIX validation failed                                                            | 200            |
+| `4003014`            | Payment processing failed                                                        | 200            |
+| `4003016`            | Transaction risk-control or AML failure                                          | 200            |
+| `4004003`            | Permission denied; wording can also represent MED payout unavailable             | 200            |
+| `4004004`            | Resource not found                                                               | 200            |
+| `4004008 / 4004010`  | Account inactive / account not found                                             | 200            |
+| `4004029`            | Too many requests                                                                | 200            |
+| `4004101`            | Authorization required                                                           | 200            |
+| `4004102`            | Invalid request metadata or header                                               | 200            |
+| `4004103`            | Source IP is not allowlisted                                                     | 200            |
+| `4004104`            | Content hash mismatch                                                            | 200            |
+| `4004105`            | Timestamp invalid or expired                                                     | 200            |
+| `4004106`            | Nonce invalid or replayed                                                        | 200            |
+| `4004107`            | Signature invalid                                                                | 200            |
+| `401`                | Invalid user                                                                     | 200            |
+| `4010 / 4011 / 4012` | Authentication failed / invalid token / expired token                            | 200            |
+| `500`                | Safe system-error fallback                                                       | 200            |
+| `501 / 502 / 503`    | Service unavailable / bank busy / temporarily unsupported                        | 200            |
+| `504`                | Compliance verification temporarily unavailable; retry with the same request\_id | 200            |
+
+### Client handling
+
+1. Parse the JSON envelope when the response is JSON.
+2. Treat outer `code === 200` as success.
+3. For any other outer code, apply retry or user-action policy by code. Do not infer success from HTTP 200.
+4. Treat `message` only as display text.
+5. Handle raw HTTP 400 or 500 text separately because no envelope is guaranteed.
+
+Only the business codes listed above are part of the client contract. Do not branch on internal enum names or raw provider diagnostics; they are implementation details and can change without notice.
