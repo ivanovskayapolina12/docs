@@ -1,0 +1,97 @@
+---
+title: "KYB Webhooks"
+description: "Receive compliance status updates for virtual and master accounts."
+---
+
+KYB webhooks report accepted compliance-session status changes. The webhook status is a compliance status and is not the same as the managed-account lifecycle status.
+
+A callback is planned only when the result update is accepted by the current compliance session. Duplicate provider events and stale status regressions do not create a new delivery.
+
+### Events and owners
+
+* `VA_ACCOUNT_KYB` — USER owner; supported subjects are `VA_MOR`, `VA`, and `PA`.
+* `MASTER_ACCOUNT_KYB` — PLATFORM owner; supported subject is `MASTER`.
+
+Current routing requires exactly one owner. `VA_ACCOUNT_KYB` requires `user_id` and does not use `platform_tenant_id`. `MASTER_ACCOUNT_KYB` requires `platform_tenant_id` and does not use `user_id`.
+
+`VA_ACCOUNT_KYB` is delivered only to USER-owned subscriptions. ACCOUNT-owned webhook configurations are not evaluated for KYB delivery.
+
+### Payload
+
+Empty optional fields are omitted.
+
+| Field                     | Type   | Description                                          |
+| ------------------------- | ------ | ---------------------------------------------------- |
+| `delivery_id`             | string | Stable delivery identifier for this subscription.    |
+| `request_id`              | string | Request identifier for compliance-result processing. |
+| `session_id`              | string | Compliance session identifier.                       |
+| `event_type`              | string | VA\_ACCOUNT\_KYB or MASTER\_ACCOUNT\_KYB.            |
+| `subject_type`            | string | Identity type being reviewed.                        |
+| `merchant_id`             | string | Identifier of the reviewed merchant identity.        |
+| `user_id`                 | string | USER owner; present for VA delivery.                 |
+| `platform_tenant_id`      | string | PLATFORM owner; present for master-account delivery. |
+| `bank_code`               | string | Subject bank code or ISPB when available.            |
+| `bank_account`            | string | Subject account number when available.               |
+| `creator_bank_account`    | string | Creator account number when available.               |
+| `master_bank_account`     | string | Master account number when available.                |
+| `reference_id`            | string | Caller-provided identity reference when available.   |
+| `status`                  | string | Normalized compliance status.                        |
+| `provider`                | string | Uppercase compliance-provider name.                  |
+| `provider_event_id`       | string | Provider event identifier.                           |
+| `provider_case_id`        | string | Provider case identifier when available.             |
+| `provider_profile_id`     | string | Provider profile identifier when available.          |
+| `provider_session_id`     | string | Provider session identifier when available.          |
+| `result_code`             | string | Provider or business result code when available.     |
+| `raw_result_ref`          | string | Reference to the stored raw result when available.   |
+| `verification_result_ref` | string | Verification-result reference when available.        |
+| `business_profile_ref`    | string | Business-profile reference when available.           |
+| `occurred_at`             | number | Event time as Unix milliseconds.                     |
+
+`session_id`, `status`, `provider`, and `provider_event_id` are required by the delivery pipeline.
+
+### Status values
+
+The delivered value is one of `PENDING`, `PENDING_SUBMISSION`, `APPROVED`, `REJECTED`, `EXPIRED`, `CREATION_FAILED`, `REVIEWING`, `ERROR`, or `FORCE_APPROVED`. It does not include a `COMPLIANCE_STATUS_` prefix.
+
+### VA example
+
+```json
+{
+  "delivery_id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "request_id": "request_demo_001",
+  "session_id": "compliance_session_demo_001",
+  "event_type": "VA_ACCOUNT_KYB",
+  "subject_type": "VA",
+  "merchant_id": "merchant_demo_va_001",
+  "user_id": "user_demo_001",
+  "bank_code": "12345678",
+  "bank_account": "00012345",
+  "reference_id": "account_reference_demo_001",
+  "status": "APPROVED",
+  "provider": "AIPRISE",
+  "provider_event_id": "provider_event_demo_001",
+  "occurred_at": 1710000000123
+}
+```
+
+### Master-account example
+
+```json
+{
+  "delivery_id": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "session_id": "compliance_session_demo_002",
+  "event_type": "MASTER_ACCOUNT_KYB",
+  "subject_type": "MASTER",
+  "merchant_id": "merchant_demo_master_001",
+  "platform_tenant_id": "platform_demo_001",
+  "reference_id": "master_reference_demo_001",
+  "status": "REVIEWING",
+  "provider": "AIPRISE",
+  "provider_event_id": "provider_event_demo_002",
+  "occurred_at": 1710000100123
+}
+```
+
+After receiving a KYB event, query the relevant account resource if you need its current managed-account state. Do not map a KYB status directly to an account lifecycle status.
+
+See Delivery and Retries for acknowledgement and idempotency rules.

@@ -1,0 +1,178 @@
+---
+title: "MED Processing Webhooks"
+description: "Receive MED case and infraction lifecycle events."
+---
+
+MED processing webhooks report case and infraction lifecycle changes through a common versioned envelope.
+
+Receiving these events requires an active `MED_PROCESSING` subscription for the intended owner. `MED_PROCESSING` is not one of the numeric values currently accepted by `/v3/webhooks`.
+
+### Subscription scopes
+
+| Scope   | Matching rule                                                   |
+| ------- | --------------------------------------------------------------- |
+| USER    | Matches `user_id`; the subscription does not target an account. |
+| ACCOUNT | Matches the exact owner ISPB and account number.                |
+
+One source event can create separate USER and ACCOUNT deliveries. Each matching subscription receives its own `delivery_id`. The callback exposes `subscription_scope` but does not expose the owner identifiers.
+
+### Events
+
+| `event_type`                | Trigger                                             |
+| --------------------------- | --------------------------------------------------- |
+| `MED_CASE_CREATED`          | A case is created with a valid owner.               |
+| `MED_CASE_STATUS_CHANGED`   | An existing case moves to a different status.       |
+| `INFRACTION_RECEIVED`       | A new infraction is stored for an owned payer case. |
+| `INFRACTION_STATUS_CHANGED` | An existing infraction moves to a different status. |
+
+A status-change event is not created when the status value is unchanged.
+
+### Envelope
+
+| Field                | Type   | Description                                                                          |
+| -------------------- | ------ | ------------------------------------------------------------------------------------ |
+| `delivery_id`        | string | Stable 64-character lowercase hexadecimal identifier for this subscription delivery. |
+| `event_id`           | string | Stable identifier of the source event. Treat it as opaque.                           |
+| `event_type`         | string | One of the four MED event types.                                                     |
+| `event_version`      | string | Payload contract version; currently `1.0`.                                           |
+| `subscription_scope` | string | `USER` or `ACCOUNT`.                                                                 |
+| `occurred_at`        | number | Event time as Unix milliseconds.                                                     |
+| `resource_id`        | string | Case or infraction resource identifier.                                              |
+| `resource_version`   | number | Version of the resource snapshot.                                                    |
+| `data`               | object | Case or infraction snapshot.                                                         |
+
+### Case status-change example
+
+```json
+{
+  "delivery_id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "event_id": "med-case:case_demo_001:v2",
+  "event_type": "MED_CASE_STATUS_CHANGED",
+  "event_version": "1.0",
+  "subscription_scope": "ACCOUNT",
+  "occurred_at": 1710000000123,
+  "resource_id": "case_demo_001",
+  "resource_version": 2,
+  "data": {
+    "case_id": "case_demo_001",
+    "transaction_id": "txn_demo_001",
+    "root_end_to_end_id": "E1234567820240101000000000000001",
+    "status": "AWAITING_ANALYSIS",
+    "previous_status": "CREATED",
+    "requested_amount": "100.00",
+    "blocked_amount_total": "100.00",
+    "returned_amount_total": "0.00",
+    "currency": "BRL",
+    "flow_type": "AUTOMATED",
+    "created_at": 1710000000000,
+    "updated_at": 1710000000123,
+    "analysis_deadline": 1710086400000,
+    "manual_refund_deadline": 1710172800000
+  }
+}
+```
+
+### Case data
+
+Case events contain:
+
+* `case_id`
+* `transaction_id`
+* `root_end_to_end_id`
+* `status`
+* `previous_status` for a status change
+* `requested_amount`
+* `blocked_amount_total`
+* `returned_amount_total`
+* `currency`
+* `flow_type`
+* `created_at`
+* `updated_at`
+* `analysis_deadline`
+* `manual_refund_deadline`
+
+Case `status` values are:
+
+* `CREATED`
+* `TRACKED`
+* `AWAITING_ANALYSIS`
+* `ANALYZED`
+* `RETURN_PROCESSING`
+* `COMPLETED`
+* `CANCELLED`
+* `FAILED`
+
+`flow_type` values are `UNSPECIFIED`, `AUTOMATED`, or `MANUAL`.
+
+### Infraction status-change example
+
+```json
+{
+  "delivery_id": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "event_id": "med-infraction:infraction_demo_001:v3",
+  "event_type": "INFRACTION_STATUS_CHANGED",
+  "event_version": "1.0",
+  "subscription_scope": "USER",
+  "occurred_at": 1710000200123,
+  "resource_id": "infraction_demo_001",
+  "resource_version": 3,
+  "data": {
+    "case_id": "case_demo_001",
+    "infraction_id": "infraction_demo_001",
+    "dict_infraction_id": "dict_infraction_demo_001",
+    "root_end_to_end_id": "E1234567820240101000000000000001",
+    "status": "CLOSED_AGREED",
+    "previous_status": "ANALYSIS_PENDING",
+    "requested_amount": "100.00",
+    "blocked_amount": "100.00",
+    "currency": "BRL",
+    "analysis_result": "AGREED",
+    "received_at": 1710000000000,
+    "sla_deadline": 1710086400000,
+    "closed_at": 1710000200123
+  }
+}
+```
+
+### Infraction data
+
+Infraction events contain:
+
+* `case_id`
+* `infraction_id`
+* `dict_infraction_id`
+* `root_end_to_end_id`
+* `status`
+* `previous_status` for a status change
+* `requested_amount`
+* `blocked_amount`
+* `currency`
+* `analysis_result`
+* `received_at`
+* `sla_deadline`
+* `closed_at`
+
+Infraction `status` values are:
+
+* `RECEIVED`
+* `BLOCKING_PENDING`
+* `BLOCKED`
+* `ANALYSIS_PENDING`
+* `CLOSED_AGREED`
+* `CLOSED_DISAGREED`
+* `CANCELLED`
+* `FAILED`
+
+`analysis_result` values are `UNSPECIFIED`, `AGREED`, or `DISAGREED`.
+
+All MED amount fields are decimal strings. MED timestamps are JSON numbers containing Unix milliseconds. `previous_status` is omitted when it does not apply. Ignore unknown fields so additive payload changes do not break your receiver.
+
+### Ordering and idempotency
+
+* Use `delivery_id` as the delivery idempotency key.
+* The same `event_id` sent to different subscriptions has different `delivery_id` values.
+* Deliveries are at least once and are not globally ordered.
+* Use `resource_id` and `resource_version` to reject stale snapshots.
+* Do not derive business meaning by parsing `event_id`.
+
+See Delivery and Retries for acknowledgement and retry behavior.

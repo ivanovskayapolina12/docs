@@ -1,0 +1,65 @@
+---
+title: "Delivery and Retries"
+description: "Understand acknowledgement, retries, duplicates, and ordering."
+---
+
+Pagsmile uses at-least-once delivery. A webhook can arrive more than once, and events are not guaranteed to arrive in business-time order.
+
+### Successful acknowledgement
+
+A delivery is acknowledged only when the sender evaluates a final HTTP 200 response.
+
+* The response body is not used to determine success.
+* A direct 201, 202, 204, other non-200 response, or network error is a failure.
+* KYB and MED deliveries do not follow redirects; any 3xx response is a failed acknowledgement.
+* Transaction USER and ACCOUNT deliveries currently follow supported redirects and evaluate the final destination response.
+* Register the final callback URL directly and do not rely on redirects, because authentication headers can be forwarded to the redirect destination.
+* Return 200 only after the event has been verified and durably accepted.
+* If an event is already stored, return 200 after recognizing it as a duplicate.
+
+A recommended receiver flow is:
+
+1. Read the raw body.
+2. Verify the signature and replay controls.
+3. Validate the minimum event fields.
+4. Insert the idempotency record and raw event atomically.
+5. Return 200.
+6. Perform slower business processing asynchronously.
+
+### Delivery identifiers
+
+* Transaction USER: stable `delivery_id`.
+* Transaction ACCOUNT: no stable `delivery_id`.
+* KYB USER and PLATFORM: stable `delivery_id`.
+* MED USER and ACCOUNT: stable `delivery_id`.
+
+Use `delivery_id` as the idempotency key when present. For a transaction callback without it, use the configured event type together with `txn_id`.
+
+### HTTP retry schedule
+
+Retry-enabled ACCOUNT and USER transaction deliveries, KYB USER and PLATFORM deliveries, and MED USER and ACCOUNT deliveries make up to eight HTTP attempts: the initial attempt plus seven retries.
+
+* Retry 1: 5 seconds
+* Retry 2: 10 seconds
+* Retry 3: 20 seconds
+* Retry 4: 30 seconds
+* Retry 5: 60 seconds
+* Retry 6: 120 seconds
+* Retry 7: 240 seconds
+
+### Subscription changes
+
+Durable deliveries revalidate the subscription before sending. A queued delivery can be cancelled when its subscription is inactive or its callback, credential, owner, target, or revision no longer matches the stored delivery.
+
+Keep the subscription active and unchanged while expected deliveries are pending.
+
+For transaction ACCOUNT delivery, callback configuration is resolved at send time. Configure the endpoint before the event occurs. If no matching callback URL exists at send time, no automatic HTTP retry is scheduled for that pending record.
+
+### Receiver requirements
+
+* Make processing idempotent.
+* Do not assume global ordering.
+* For MED state, compare `resource_version` before applying a snapshot.
+* Preserve the original event for reconciliation.
+* Respond quickly; do not wait for downstream business processing.
+* Monitor non-200 responses, latency, duplicate rate, and signature failures.
