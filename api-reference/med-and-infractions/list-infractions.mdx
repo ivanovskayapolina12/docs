@@ -1,0 +1,46 @@
+---
+title: "List Infractions"
+description: "List payer-side MED infractions with optional filters."
+---
+
+List MED infractions visible in the selected payer-side owner scope.
+
+### Endpoint
+
+`POST /v3/infractions/list`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers. The selected account determines payer-side MED owner scope; receiver-side operations are not exposed by these routes.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+Every field is optional: numeric `page`, `page_size`, and `status`; numeric Unix-millisecond `start_time` and `end_time`; string `case_id`, `infraction_report_id`, and `connected_transaction_id`.
+
+### Success data
+
+`items[]` with infraction/transaction/account/case/report IDs, numeric status, display text, decimal-string amount, numeric create/update times; plus numeric pagination fields.
+
+### Behavior and validation
+
+This layer forwards filters as supplied and asserts no local default pagination, limit, or time window.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+Common account-owner, MED RPC, signature, and mapped provider errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/infractions/list --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"page":1,"page_size":20,"status":3,"case_id":"demo-med-case-001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"items":[{"infraction_id":"demo-infraction-001","connected_transaction_id":"demo-pix-txn-010","account":"DEMO-TARGET-01","status":3,"status_display":"Blocked","amount":"50.00","created_time":1767225600000,"updated_time":1767225700000,"case_id":"demo-med-case-001","infraction_report_id":"demo-report-001"}],"page":{"page":1,"page_size":20,"total":1,"total_pages":1}},"time":1767225600000}
+```

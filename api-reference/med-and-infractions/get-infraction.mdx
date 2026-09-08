@@ -1,0 +1,49 @@
+---
+title: "Get Infraction"
+description: "Retrieve one payer-side MED infraction."
+---
+
+Retrieve one MED infraction visible in the selected payer-side owner scope.
+
+### Endpoint
+
+`POST /v3/infractions/detail`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers. The selected account determines payer-side MED owner scope; receiver-side operations are not exposed by these routes.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field           | Required | Type   | Validation         |
+| --------------- | -------- | ------ | ------------------ |
+| `infraction_id` | Yes      | string | Must be non-empty. |
+
+### Success data
+
+`infraction` with identifiers, account, numeric canonical status, display text, decimal-string amount/blocked amount, numeric lifecycle times, freeze projection strings, and original transaction. `freeze_status` is intentionally a string, not a protobuf enum.
+
+### Behavior and validation
+
+Use numeric `status` for workflow logic. Freeze fields are downstream projections; the Open API layer does not add local transition rules.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` missing infraction ID.
+* Common owner-scope, MED RPC, and mapped provider errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/infractions/detail --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"infraction_id":"demo-infraction-001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"infraction":{"infraction_id":"demo-infraction-001","status":3,"status_display":"Blocked","amount":"50.00","blocked_amount":"20.00","freeze_status":"active","case_id":"demo-med-case-001"}},"time":1767225600000}
+```

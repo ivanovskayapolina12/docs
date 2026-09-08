@@ -1,0 +1,53 @@
+---
+title: "Create MED Case"
+description: "Open a payer-side MED case for a disputed PIX transfer."
+---
+
+Open a payer-side MED case for a disputed root PIX transfer.
+
+### Endpoint
+
+`POST /v3/med/create`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers. The selected account determines payer-side MED owner scope; receiver-side operations are not exposed by these routes.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field                      | Required | Type    | Notes                                     |
+| -------------------------- | -------- | ------- | ----------------------------------------- |
+| `end_to_end_id`            | Yes      | string  | Root PIX end-to-end ID.                   |
+| `original_fraud_situation` | No       | number  | Numeric enum; omitted is 0 (UNSPECIFIED). |
+| `report_details`           | No       | string  | Caller-provided report text.              |
+| `complaint_create_time`    | No       | number  | Unix-millisecond timestamp; omitted is 0. |
+| `automatic_refund`         | No       | boolean | Omitted is false.                         |
+
+### Success data
+
+`med_case` with IDs, numeric canonical status, display text, progress/cancellation fields, original transaction, decimal-string amounts, numeric fraud/flow values, millisecond lifecycle timestamps/deadlines, timeline, infractions, and refunds.
+
+### Behavior and validation
+
+Eligibility, workflow transitions, and cancellation availability are decided by the downstream MED service. The immediate result can be non-final; use numeric `status` for logic.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` missing end-to-end ID; `4003008` missing account context; `4004101` incomplete owner scope.
+* `500` unavailable/nil MED response and mapped MED provider errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/med/create --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"end_to_end_id":"E-DEMO-PIX-0001","original_fraud_situation":1,"report_details":"Fictional documentation example.","complaint_create_time":1767225600000,"automatic_refund":true}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"med_case":{"case_id":"demo-med-case-001","status":1,"status_display":"Created","root_end_to_end_id":"E-DEMO-PIX-0001","requested_amount":"50.00","automatic_refund":true,"flow_type":1,"created_at":1767225600000,"updated_at":1767225600000,"can_cancel":true,"timeline":[],"infractions":[],"refunds":[]}},"time":1767225600000}
+```

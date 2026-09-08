@@ -1,0 +1,49 @@
+---
+title: "Get MED Case"
+description: "Retrieve one payer-side MED case."
+---
+
+Retrieve one MED case visible in the selected payer-side owner scope.
+
+### Endpoint
+
+`POST /v3/med/detail`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers. The selected account determines payer-side MED owner scope; receiver-side operations are not exposed by these routes.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field     | Required | Type   | Validation         |
+| --------- | -------- | ------ | ------------------ |
+| `case_id` | Yes      | string | Must be non-empty. |
+
+### Success data
+
+`med_case` using the full case-detail model: identifiers, numeric status, display/progress fields, decimal-string amounts, millisecond times/deadlines, original transaction, timeline, infractions, and refunds.
+
+### Behavior and validation
+
+The downstream MED service supplies timeline, deadline, infraction, refund, and `can_cancel` projections. Do not infer eligibility or deadlines from the Open API layer.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` missing case ID.
+* Common owner-scope, MED RPC, and mapped provider errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/med/detail --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"case_id":"demo-med-case-001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"med_case":{"case_id":"demo-med-case-001","status":3,"status_display":"Awaiting analysis","can_cancel":true,"timeline":[],"infractions":[],"refunds":[]}},"time":1767225600000}
+```

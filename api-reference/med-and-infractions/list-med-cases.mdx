@@ -1,0 +1,46 @@
+---
+title: "List MED Cases"
+description: "List payer-side MED cases with optional filters."
+---
+
+List MED cases visible in the selected payer-side owner scope.
+
+### Endpoint
+
+`POST /v3/med/list`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers. The selected account determines payer-side MED owner scope; receiver-side operations are not exposed by these routes.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+Every field is optional: numeric `page`, `page_size`, `status`, `original_fraud_situation`, and `flow_type`; string `case_id`, `funds_recovery_id`, `dict_funds_recovery_id`, and `end_to_end_id`; numeric Unix-millisecond `start_time` and `end_time`.
+
+### Success data
+
+`items[]` with case/recovery/root IDs, decimal-string amount, numeric status, display text, numeric `opened_at`, `can_cancel`, and transaction ID; plus numeric pagination fields.
+
+### Behavior and validation
+
+This layer forwards optional-field presence without applying pagination defaults, limits, or a business time window. The MED service remains authoritative.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+Account-owner, signature, MED RPC, and mapped provider errors. No endpoint-specific validation error is asserted when optional filters are omitted.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/med/list --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"page":1,"page_size":20,"status":3}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"items":[{"case_id":"demo-med-case-001","root_end_to_end_id":"E-DEMO-PIX-0001","amount":"50.00","status":3,"status_display":"Awaiting analysis","opened_at":1767225600000,"can_cancel":true,"transaction_id":"demo-pix-txn-010"}],"page":{"page":1,"page_size":20,"total":1,"total_pages":1}},"time":1767225600000}
+```

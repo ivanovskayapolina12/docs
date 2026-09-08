@@ -1,0 +1,49 @@
+---
+title: "Cancel MED Case"
+description: "Request cancellation of a payer-side MED case."
+---
+
+Request cancellation of one MED case in the selected payer-side owner scope.
+
+### Endpoint
+
+`POST /v3/med/cancel`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers. The selected account determines payer-side MED owner scope; receiver-side operations are not exposed by these routes.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field     | Required | Type   | Validation         |
+| --------- | -------- | ------ | ------------------ |
+| `case_id` | Yes      | string | Must be non-empty. |
+
+### Success data
+
+The current post-cancellation `med_case` detail projection.
+
+### Behavior and validation
+
+The Open API layer does not locally test `can_cancel`; the MED service decides whether the operation is allowed. Do not infer a time limit. The returned numeric status and `can_cancel` value are authoritative. No endpoint idempotency key exists.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` missing case ID.
+* Common owner-scope, MED RPC, and mapped provider errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/med/cancel --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"case_id":"demo-med-case-001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"med_case":{"case_id":"demo-med-case-001","status":7,"status_display":"Cancelled","can_cancel":false,"timeline":[],"infractions":[],"refunds":[]}},"time":1767225600000}
+```
