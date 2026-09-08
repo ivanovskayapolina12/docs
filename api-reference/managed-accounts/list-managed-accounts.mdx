@@ -1,0 +1,59 @@
+---
+title: "List Managed Accounts"
+description: "List managed accounts visible to an owner."
+---
+
+List managed accounts visible under the user's active Master Account relationship.
+
+### Endpoint
+
+`POST /v3/onboarding/managed_accounts/list`
+
+### Authentication and target
+
+A user-scoped owner credential is required. The selected managed account must be visible through the user's active Master Account relationship. This route does not become accessible merely by adding account-targeting headers.
+
+Do not send X-ISPB or X-Account-Number. This user-only management route rejects account-targeting headers.
+
+### Request body
+
+| Field            | Required | Description                                                                                                      |
+| ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `model`          | No       | Numeric model filter: 1 MOR, 2 VA, or 3 PA.                                                                      |
+| `status`         | No       | Numeric status filter: 1 PENDING, 2 ACTIVE, 3 FROZEN, 4 CLOSED, 5 REJECTED, 6 EXPIRED, or 7 PENDING\_SUBMISSION. |
+| `tax_id`         | No       | Tax ID filter.                                                                                                   |
+| `page.page`      | No       | Page number starting at 1.                                                                                       |
+| `page.page_size` | No       | Defaults to 20 and is capped at 100.                                                                             |
+
+### Success data
+
+`managed_accounts[]` plus `page` with `page`, `page_size`, `total`, and `total_pages`.
+
+### Behavior and validation
+
+Visibility is restricted to valid MOR, VA, and PA relationships under the owner's active Master Account.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `field_invalid` for an unsupported model or status.
+* `invalid_user` when an active Master context is unavailable.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/onboarding/managed_accounts/list" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"model":2,"page":{"page":1,"page_size":20}}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"managed_accounts":[{"reference_id":"managed-va-demo-001","model":2,"status":2}],"page":{"page":1,"page_size":20,"total":1,"total_pages":1}},"time":1710002200000}
+```

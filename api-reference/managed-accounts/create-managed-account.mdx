@@ -1,0 +1,62 @@
+---
+title: "Create Managed Account"
+description: "Create a MOR, VA, or PA managed account."
+---
+
+Create a managed account using the MOR, VA, or PA model.
+
+### Endpoint
+
+`POST /v3/onboarding/managed_accounts/create`
+
+### Authentication and target
+
+A user-scoped credential is required. The owner must have exactly one active Master Account and the managed-account feature must be enabled.
+
+Do not send X-ISPB or X-Account-Number. This user-only management route rejects account-targeting headers. For a PA, linked\_account is a JSON request-body field, not an account-targeting header.
+
+### Request body
+
+| Field                                   | Required    | Description                                                                                                       |
+| --------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
+| `reference_id`                          | Yes         | Stable merchant reference; reuse it for technical retries.                                                        |
+| `model`                                 | Yes         | Numeric enum: 1 MOR, 2 VA, or 3 PA.                                                                               |
+| `compliance_mode`, `compliance_payload` | Conditional | Required for VA and PA; forbidden for MOR.                                                                        |
+| `return_url`                            | Conditional | Required for Hosted Link; forbidden for MOR.                                                                      |
+| `provider_session_info`                 | Conditional | Provider Session input; forbidden for MOR.                                                                        |
+| `linked_account`                        | Conditional | Required for PA and forbidden for MOR/VA. Must reference an eligible active Master Account or VA under the owner. |
+| `notification_email`                    | No          | Notification email metadata.                                                                                      |
+
+### Success data
+
+`reference_id`, `model`, current `status`, and an optional `verification_url`.
+
+### Behavior and validation
+
+MOR reuses approved Master compliance. VA and PA create independent compliance sessions, so activation is asynchronous. A same-owner/model/reference/parent match reuses the existing identity; keep `reference_id` stable on retry.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `field_required` or `field_invalid` for model-specific field matrix violations.
+* `invalid_user` when an eligible active Master context is unavailable.
+* `permission_denied` when a linked account is outside the owner's allowed relationship.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/onboarding/managed_accounts/create" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"reference_id":"managed-va-demo-001","model":2,"compliance_mode":1,"compliance_payload":{"document_type":1,"tax_id":"00000000000","legal_name":"Demo Subject"},"return_url":"https://merchant.example.test/managed-return"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"reference_id":"managed-va-demo-001","model":2,"status":1,"verification_url":"https://verification.example.test/session/managed-demo-001"},"time":1710002000000}
+```
