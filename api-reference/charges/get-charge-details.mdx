@@ -1,0 +1,60 @@
+---
+title: "Get Charge Details"
+description: "Retrieve an inbound PIX charge."
+---
+
+Retrieve an inbound PIX charge associated with the authenticated target account.
+
+### Endpoint
+
+`POST /v3/charges/details`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+At least one identifier is required.
+
+| Field           | Required    | Type   | Description                |
+| --------------- | ----------- | ------ | -------------------------- |
+| `txn_id`        | Conditional | string | Platform transaction ID.   |
+| `settlement_id` | Conditional | string | Settlement transaction ID. |
+
+### Success data
+
+`details` with `txn_id`, numeric `txn_status`, string `amount` and `currency`, payer/payee, `merchant_order_id`, numeric `source_type`, `memo`, `credit_fee`, and `settlement_id`. Only these mapper-populated fields are promised here.
+
+### Behavior and validation
+
+This lookup remains POST and is bound to inbound flow plus the selected bank account. Party documents can be masked. A missing payment detail is returned as business code `4003003`.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4000` when both identifiers are absent.
+* `4003003` when no accessible transaction detail exists.
+* `500` for a nil internal response, `501` for RPC transport failure, and `4003008` for missing account context.
+
+### Example request
+
+```bash
+curl --request POST "${BASE_URL}/v3/charges/details" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"settlement_id":"settlement_demo_charge_001"}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"details":{"txn_id":"txn_demo_charge_001","txn_status":2,"amount":"15.25","currency":"BRL","settlement_id":"settlement_demo_charge_001"}},"time":1767225600000}
+```
