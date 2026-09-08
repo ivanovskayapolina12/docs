@@ -1,0 +1,47 @@
+---
+title: "Get Bank Account"
+description: "Retrieve balances, active PIX keys, limits, webhooks, and fees."
+---
+
+Retrieve the selected account's current account projection.
+
+### Endpoint
+
+`POST /v3/bank_account`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+Send an empty JSON object: `{}`. This route defines no body fields.
+
+### Success data
+
+Account identifiers; decimal-string `balance`, `frozen_amount`, `available_amount`, `med_frozen_amount`, and `other_frozen_amount`; currency; active `pix_keys[]`; `limit_config`; `webhooks[]`; and `fee_configs[]`. PIX-key enums and lifecycle times are JSON numbers. Every fee-config field is a string.
+
+### Behavior and validation
+
+Only active PIX keys are returned. If balance-snapshot retrieval fails, the route still succeeds with balance components `"0"` and `currency:"BRL"`. PIX-key or webhook lookup failure becomes an empty list; limit or fee lookup failure may become `null`. Basic-account lookup errors remain fatal. `other_frozen_amount` is total frozen minus MED frozen, clamped at zero.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `500` missing client context; `501` account RPC failure; `4004010` nil account.
+* Mapped account-provider errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/bank_account --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"account_number":"DEMO-TARGET-01","ispb":"00000000","balance":"100.00","frozen_amount":"20.00","available_amount":"80.00","med_frozen_amount":"20.00","other_frozen_amount":"0","currency":"BRL","pix_keys":[{"pix_key":"demo.receiver@example.test","pix_key_type":3,"status":1,"created_at":1767225600000}],"limit_config":null,"webhooks":[],"fee_configs":[]},"time":1767225600000}
+```

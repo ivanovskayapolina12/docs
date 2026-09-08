@@ -1,0 +1,55 @@
+---
+title: "Get Statements"
+description: "Retrieve cursor-based transaction statements for the selected account."
+---
+
+Retrieve transaction statements for the authenticated target account.
+
+### Endpoint
+
+`POST /v3/statements`
+
+### Authentication and target
+
+Use an account credential for its bound account, or a user credential with both `X-ISPB` and `X-Account-Number`. If an account credential sends those headers, both must be present and must match its bound account. Platform credentials are not accepted. All requests require the standard HMAC-SHA256 headers.
+
+The curl example below uses an ACCOUNT credential bound to the operated account, so it omits X-ISPB and X-Account-Number. If X-Client-ID identifies a USER credential, add both target headers and include their exact trimmed values in the canonical header set before calculating X-Signature.
+
+### Request body
+
+| Field                     | Required | Type   | Validation                                                  |
+| ------------------------- | -------- | ------ | ----------------------------------------------------------- |
+| `start_date`, `end_date`  | Yes      | number | Non-zero Unix milliseconds; start must be earlier than end. |
+| `page_size`               | No       | number | 1 through 100 when supplied.                                |
+| `txn_id`, `settlement_id` | No       | string | Optional filters.                                           |
+| `funds_type`              | No       | number | 1 CREDIT or 2 DEBIT; maps to inbound/outbound flow.         |
+| `transaction_type`        | No       | number | Omitted becomes 0 and is forwarded.                         |
+| `snapshot_timestamp`      | No       | number | Optional snapshot time.                                     |
+| `cursor`                  | No       | object | Numeric `timestamp` and string `id`.                        |
+
+### Success data
+
+`statements[]` with IDs, decimal-string amount, memo, numeric times/payment/status/type fields, `is_credit`, parties, and parent references; plus numeric `snapshot_timestamp` and cursor. The generated `page` field is not populated by this mapper.
+
+### Behavior and validation
+
+Results are requested in descending order. `is_credit` compares the transaction payee document to the selected account document. Party documents can be masked by merchant setting.
+
+### Errors
+
+Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
+
+* `4001` invalid dates or page size; `4003008` missing account context.
+* `501` transaction-list RPC failure and mapped upstream errors.
+
+### Example request
+
+```bash
+curl --request POST ${BASE_URL}/v3/statements --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"start_date":1767139200000,"end_date":1767225600000,"page_size":20,"funds_type":2}'
+```
+
+### Example response
+
+```json
+{"code":200,"message":"success","data":{"statements":[{"txn_id":"demo-pix-txn-003","amount":"25.00","memo":"Demo supplier payment","created_at":1767225600000,"settlement_id":"demo-settlement-003","payment_method":1,"payment_variant":1,"is_credit":false,"txn_status":2,"txn_type":1,"parent_txn_id":"","parent_settlement_id":"","payer":null,"payee":null}],"snapshot_timestamp":1767225600000,"cursor":{"timestamp":1767225600000,"id":"demo-cursor-001"}},"time":1767225600000}
+```
