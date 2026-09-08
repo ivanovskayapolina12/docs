@@ -1,0 +1,33 @@
+---
+title: "Managed Accounts"
+description: "Create, manage, and retrieve credentials for managed accounts."
+---
+
+Managed Accounts represent MOR, VA, or PA accounts owned through a user's active Master Account relationship.
+
+### Authentication
+
+Every operation requires a user-scoped owner credential. The selected account must be visible through that owner relationship.
+
+### Models and state
+
+REST enum fields are JSON numbers:
+
+* Model: `1` MOR, `2` VA, `3` PA.
+* Compliance mode: `1` Hosted Link, `2` API Body, `3` Provider Session.
+* Account status: `1` Pending, `2` Active, `3` Frozen, `4` Closed, `5` Rejected, `6` Expired, `7` Pending Submission.
+
+MOR reuses approved Master compliance. VA and PA use an independent compliance session. PA requires an eligible linked account and has no independent Open API credential.
+
+### Credential behavior
+
+Credential retrieval is available only for an eligible active MOR or VA. A newly provisioned secret is returned in full once and is masked on later reads. Credential rotation is present in the HTTP contract but the current service always returns the unsupported-operation error; it is not an available production capability.
+
+### Endpoints
+
+* Create — `POST /v3/onboarding/managed_accounts/create`
+* Detail — `POST /v3/onboarding/managed_accounts/detail`
+* List — `POST /v3/onboarding/managed_accounts/list`
+* Update — `POST /v3/onboarding/managed_accounts/update`
+* Get credential — `POST /v3/onboarding/managed_accounts/credentials/get`
+* Rotate credentials — `POST /v3/onboarding/managed_accounts/credentials/rotate`

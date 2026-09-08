@@ -1,0 +1,23 @@
+---
+title: "Transfers"
+description: "Initiate, confirm, and inspect PIX and TED transfers."
+---
+
+PIX key and QR-code transfers use an initiate/confirm flow. PIX bank-account and TED bank-account transfers are submitted directly. Use the details and status endpoints to inspect processing results.
+
+#### Endpoints
+
+* Initiate PIX by key — `POST /v3/transfers/pix/key-initiate`
+* Confirm PIX by key — `POST /v3/transfers/pix/key-confirm`
+* Initiate PIX by QR code — `POST /v3/transfers/pix/qr-code-initiate`
+* Confirm PIX by QR code — `POST /v3/transfers/pix/qr-code-confirm`
+* Send PIX to a bank account — `POST /v3/transfers/pix/bank-account`
+* Send TED to a bank account — `POST /v3/transfers/ted/bank-account`
+* Get transfer details — `POST /v3/transfers/details`
+* Check transfer status — `POST /v3/transfers/status/check`
+
+#### Authentication and account targeting
+
+All endpoints use signed POST requests. Send `X-Client-ID`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. `X-Content-Hash` is optional for inbound API calls. If account-targeting headers are used, `X-ISPB` and `X-Account-Number` must be sent together.
+
+Do not treat an initiation response as final settlement. Follow the endpoint-specific state and confirmation rules.

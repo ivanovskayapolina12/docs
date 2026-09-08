@@ -1,0 +1,16 @@
+---
+title: "Charges"
+description: "Retrieve a PIX charge by transaction identifier."
+---
+
+Use this endpoint to retrieve the current representation of an incoming PIX charge.
+
+ENDPOINT
+
+• Get charge details — POST /v3/charges/details
+
+AUTHENTICATION AND ACCOUNT TARGETING
+
+Use a signed POST request. Send X-Client-ID, X-Timestamp, X-Nonce, and X-Signature. X-Content-Hash is optional. If account-targeting headers are used, X-ISPB and X-Account-Number must be sent together.
+
+Use the outer response envelope — code, message, data, and time — to determine whether the API call succeeded.

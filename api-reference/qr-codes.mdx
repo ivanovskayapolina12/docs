@@ -1,0 +1,16 @@
+---
+title: "QR Codes"
+description: "Create and inspect PIX QR codes."
+---
+
+Create dynamic or static PIX QR codes and retrieve a QR code by ID.
+
+ENDPOINTS
+
+• Generate dynamic QR code — POST /v3/qr\_code/generate/dynamic\
+• Generate static QR code — POST /v3/qr\_code/generate/static\
+• Get QR code details — POST /v3/qr\_code/details
+
+AUTHENTICATION AND ACCOUNT TARGETING
+
+Use a signed POST request. Send X-Client-ID, X-Timestamp, X-Nonce, and X-Signature. X-Content-Hash is optional. If account-targeting headers are used, X-ISPB and X-Account-Number must be sent together.

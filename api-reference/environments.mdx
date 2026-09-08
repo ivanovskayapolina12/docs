@@ -1,0 +1,33 @@
+---
+title: "Environments"
+description: "Configure the base URL supplied for your integration environment."
+---
+
+Pagsmile Open API v3 uses the following base URL for live traffic:
+
+```
+https://ebanking-openapi.pagsmile.com.br
+```
+
+Credentials and base URLs are issued as a matching set. If the Pagsmile integration team provides another base URL during onboarding or validation, use it only with the matching credentials.
+
+### Configure your client
+
+```bash
+export BASE_URL="https://ebanking-openapi.pagsmile.com.br"
+```
+
+Append the documented v3 path without rewriting it:
+
+```
+"${BASE_URL}/v3/charges/details"
+```
+
+### Environment isolation
+
+* Credentials are endpoint-specific.
+* Do not send live customer data to an endpoint intended for onboarding or validation.
+* Keep separate nonce stores, logs, and secret configuration for each endpoint.
+* Generate the signature from the exact host-independent path, query, headers, and raw body sent with the request.
+
+If you have not received a base URL or credential scope, contact your Pagsmile integration representative before sending traffic.

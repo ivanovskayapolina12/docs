@@ -1,0 +1,46 @@
+---
+title: "Webhook Management"
+description: "Create and manage outbound event callback configurations."
+---
+
+A webhook registration binds one supported event type to one callback URL within the authenticated credential-owner scope.
+
+### Request event types
+
+Webhook create and update requests use JSON numbers:
+
+* `1` — `PIX_IN`
+* `2` — `PIX_OUT`
+* `3` — `REFUND_IN`
+* `4` — `REFUND_OUT`
+* `5` — `VA_ACCOUNT_KYB`
+* `6` — `MASTER_ACCOUNT_KYB`
+
+Create responses also use the numeric event type. In Get, Update, and List, `webhook.event_type` is mapped to `PIX_PAYMENT_IN`, `PIX_PAYMENT_OUT`, `PIX_REFUND_IN`, `PIX_REFUND_OUT`, `VA_ACCOUNT_KYB`, or `MASTER_ACCOUNT_KYB`.
+
+### Owner and target rules
+
+* **Account credential:** supported for Pix transaction and refund events on its bound account. `VA_ACCOUNT_KYB` and `MASTER_ACCOUNT_KYB` are not supported delivery scopes for an account-owned subscription.
+* **User credential:** transaction and refund events require `account_number`. `VA_ACCOUNT_KYB` requires `account_number` to be omitted. `MASTER_ACCOUNT_KYB` is not accepted.
+* **Platform credential:** `MASTER_ACCOUNT_KYB` only, with no `account_number`.
+
+Do not create `VA_ACCOUNT_KYB` with an account credential. VA\_ACCOUNT\_KYB delivery resolves USER-owned subscriptions only; an account-owned registration does not receive this event.
+
+### Current lifecycle behavior
+
+* `callback_url` is trimmed and must be non-empty. This layer does not validate URL syntax or require HTTPS.
+* `webhook_id` is the practical identifier returned by the mapper. For Get, Update, or Delete, send it as `subscription_id` when exact targeting is needed.
+* List currently ignores its contract-level `subscription_id` filter.
+* Create has no client idempotency field.
+* Delete disables a configuration; it does not physically erase the record.
+* Account-scoped List explicitly requests active subscriptions. Do not infer identical filtering for every owner type.
+
+### Endpoints
+
+* Create — `POST /v3/webhooks/create`
+* Get — `POST /v3/webhooks/get`
+* Update — `POST /v3/webhooks/update`
+* Delete — `POST /v3/webhooks/delete`
+* List — `POST /v3/webhooks/list`
+
+For callback delivery, retry tolerance, and outbound signature verification, see Webhooks and Signature Verification.

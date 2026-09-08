@@ -1,0 +1,17 @@
+---
+title: "Master Accounts"
+description: "Create and manage master-account onboarding records."
+---
+
+Master accounts are top-level onboarding records. Creation, listing, and update operations require a platform credential. Detail lookup accepts a platform credential or an owner user credential when the implementation can resolve that ownership.
+
+### Endpoints
+
+* Create master account — `POST /v3/onboarding/master_accounts/create`
+* Get master account — `POST /v3/onboarding/master_accounts/detail`
+* List master accounts — `POST /v3/onboarding/master_accounts/list`
+* Update master account — `POST /v3/onboarding/master_accounts/update`
+
+### Authentication
+
+All requests use the HMAC-SHA256 request-signing headers. Account-targeting headers are not a substitute for the required platform or owner credential policy.

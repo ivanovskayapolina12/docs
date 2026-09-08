@@ -1,0 +1,20 @@
+---
+title: "Refunds"
+description: "Create a PIX refund and inspect its current status."
+---
+
+Refund an eligible incoming PIX payment, retrieve a refund, or check its processing status.
+
+### Endpoints
+
+* Create PIX refund — `POST /v3/refunds/pix`
+* Get refund details — `POST /v3/refunds/details`
+* Check refund status — `POST /v3/refunds/status/check`
+
+### Authentication and account targeting
+
+All endpoints use signed POST requests. Send `X-Client-ID`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. `X-Content-Hash` is optional for inbound API calls.
+
+For a USER credential, send both `X-ISPB` and `X-Account-Number` to select the account. An ACCOUNT credential can omit the pair and use its bound account.
+
+Refund processing is stateful. A successful API response does not by itself mean settlement has completed; inspect the returned status and use the read endpoints when needed.

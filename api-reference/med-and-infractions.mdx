@@ -1,0 +1,26 @@
+---
+title: "MED & Infractions"
+description: "Manage payer-side MED cases and inspect related infractions."
+---
+
+The Special Return Mechanism (MED) endpoints expose payer-side case creation, listing, detail, and cancellation. Infraction endpoints list and retrieve the related infraction records available to the authenticated account.
+
+### MED endpoints
+
+* Create case — `POST /v3/med/create`
+* List cases — `POST /v3/med/list`
+* Get case — `POST /v3/med/detail`
+* Cancel case — `POST /v3/med/cancel`
+
+### Infraction endpoints
+
+* List infractions — `POST /v3/infractions/list`
+* Get infraction — `POST /v3/infractions/detail`
+
+### Authentication and account targeting
+
+All endpoints use signed POST requests. Send `X-Client-ID`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. `X-Content-Hash` is optional for inbound API calls.
+
+For a USER credential, send both `X-ISPB` and `X-Account-Number` to select the account. An ACCOUNT credential can omit the pair and use its bound account.
+
+Case details can include timeline events, infractions, and refund summaries. Do not infer a final case outcome from the create response alone.

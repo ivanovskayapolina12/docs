@@ -1,0 +1,17 @@
+---
+title: "Bank Account & Statements"
+description: "Inspect the authenticated account and retrieve statement entries."
+---
+
+Use this section to inspect an account and list its statement entries. Monetary values are JSON strings and must be handled with fixed-point decimal arithmetic.
+
+### Endpoints
+
+* Get bank account — `POST /v3/bank_account`
+* Get statements — `POST /v3/statements`
+
+### Authentication and account targeting
+
+All endpoints use signed POST requests. Send `X-Client-ID`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. `X-Content-Hash` is optional for inbound API calls.
+
+For a USER credential, send both `X-ISPB` and `X-Account-Number` to select the account. An ACCOUNT credential can omit the pair and use its bound account. The credential must be allowed to access the selected account.

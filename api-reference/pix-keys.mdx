@@ -1,0 +1,17 @@
+---
+title: "PIX Keys"
+description: "Create or delete a PIX key for the authenticated account."
+---
+
+Manage PIX keys owned by the selected account.
+
+### Endpoints
+
+* Create PIX key — `POST /v3/pix_keys/create`
+* Delete PIX key — `POST /v3/pix_keys/delete`
+
+### Authentication and account targeting
+
+All endpoints use signed POST requests. Send `X-Client-ID`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. `X-Content-Hash` is optional for inbound API calls. If you use account-targeting headers, send `X-ISPB` and `X-Account-Number` together.
+
+The credential must be allowed to access the selected account. Key ownership and key-type validation are enforced by the service.
