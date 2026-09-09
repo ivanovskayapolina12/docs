@@ -1,19 +1,60 @@
 ---
-title: "Welcome Pagsmile IP"
-description: "The high-performance banking platform for the Brazilian market."
+title: "Welcome to Pagsmile IP"
+description: "Integrate PIX payments, transfers, refunds, and account operations into your application."
 ---
 
-Pagsmile IP is a licensed Payment Institution (IP) built to streamline and secure financial operations. By connecting you directly to the Central Bank of Brazil’s PIX infrastructure, we eliminate intermediaries to provide faster settlement and enterprise-grade reliability.
+Pagsmile IP connects your application to payment and banking services in Brazil. Use **Open API v3** to create PIX QR codes, send funds, manage accounts, and receive transaction updates.
 
-#### Why Pagsmile IP?
+New to the integration? Start with account setup, then prepare your API access and your first signed request.
 
-* Direct PIX Integration: Real-time processing via the Central Bank.
-* Enterprise Security: Built-in AML and Compliance engines.
-* Expert Support: Dedicated IT and compliance teams to guide your launch.
+<Columns cols={2}>
+  <Card title="Start integrating" icon="rocket" href="/getting-started" cta="Set up your account" arrow>
+    Learn how to register and complete the identity or business verification required for your account.
+  </Card>
+  <Card title="Explore the API" icon="book-open" href="/api-reference" cta="Browse API reference" arrow>
+    Find request parameters, response fields, validation rules, and examples for each operation.
+  </Card>
+</Columns>
 
-#### Get Started
+## What you can build
 
-To ensure a smooth launch, we recommend exploring the documentation in this order:
+Choose the workflow that matches your application.
 
-1. [Getting Started](/getting-started): Learn about the regulatory requirements and account setup.
-2. [Technical Integration](/integration-overview): Access our API references and SDKs.
+| Your goal | How Pagsmile IP helps | Explore |
+| --- | --- | --- |
+| Receive PIX payments | Generate static or dynamic QR codes and retrieve incoming payment details. | [QR codes](/api-reference/qr-codes) · [Charges](/api-reference/charges) |
+| Send funds | Initiate and confirm PIX payments by key or QR code, or send PIX and TED transfers to bank accounts. | [Transfers](/api-reference/transfers) |
+| Refund a PIX payment | Create a refund for an eligible payment and track its status. | [Refund lifecycle](/pix-refund-lifecycle) |
+| Work with accounts | Retrieve balances and statements, or integrate master and managed account onboarding. | [Account data](/api-reference/bank-account-and-statements) · [Master accounts](/api-reference/master-accounts) · [Managed accounts](/api-reference/managed-accounts) |
+| Receive event updates | Handle signed notifications for transactions, compliance reviews, and MED cases. | [Webhooks](/webhooks) |
+
+## Start your integration
+
+<Steps>
+  <Step title="Set up your account">
+    Register and complete the verification required for your individual or business account.
+
+    [Follow the account setup guide →](/getting-started)
+  </Step>
+  <Step title="Prepare your API access">
+    Confirm your base URL and matching credentials with your Pagsmile integration representative. Check which credential type your chosen operation requires.
+
+    [Configure your environment →](/api-reference/environments)
+  </Step>
+  <Step title="Build a signed request">
+    API requests use JSON and an HMAC-SHA256 signature. Follow the integration guide to prepare the headers, sign the request, and read the response.
+
+    [Learn how to authenticate requests →](/integration-overview)
+  </Step>
+  <Step title="Connect your payment workflow">
+    Use the reference for your chosen operation, then implement status checks and webhook handling where applicable. Some operations finish asynchronously, so an accepted request may still be processing.
+
+    [Choose an API operation →](/api-reference) · [Handle webhook events →](/webhooks)
+  </Step>
+</Steps>
+
+## Keep these references handy
+
+- **[Error catalog](/integration-overview/error-catalog)** — understand response codes and investigate failed requests.
+- **[Objects and enums](/integration-overview/object-and-enums-references)** — look up shared fields, types, and status values.
+- **[Webhook delivery and retries](/webhooks/delivery-and-retries)** — handle acknowledgements, duplicate events, and delivery order.
