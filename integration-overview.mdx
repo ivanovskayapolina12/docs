@@ -1,29 +1,130 @@
 ---
 title: "Integration Overview"
-description: "Sign, send, and process Open API v3 requests."
+description: "Connect to Open API v3, sign your first request, and handle responses and webhook events."
 ---
 
-Pagsmile Open API v3 uses signed JSON requests. It does not use OAuth bearer tokens. Every public v3 operation documented here is an HTTP POST.
+Connect your application to Pagsmile Open API v3 with a signed request. This guide takes you from the credentials you receive to a first account lookup, then explains how to handle responses and receive event notifications.
 
-### Credential types and account targeting
+**Your integration path:** Confirm access → select an account → sign and send a request → handle the result → connect webhooks.
 
-* **PLATFORM credential** — for platform-level master-account operations. It cannot select or operate an account through account-target headers.
-* **USER credential** — for user-owned operations. For an account-level operation, send both `X-ISPB` and `X-Account-Number` to select the account.
-* **ACCOUNT credential** — bound to one account. Account-target headers are optional; if sent, both must exactly match the credential-bound account.
+<CardGroup cols={2}>
+  <Card title="Send your first request" icon="terminal" href="#send-your-first-request">
+    Retrieve account information with a signed account lookup.
+  </Card>
+  <Card title="Explore API operations" icon="book-open" href="/api-reference">
+    Find the endpoints and fields for your use case.
+  </Card>
+</CardGroup>
 
-#### Account-targeting rules
+<Note>
+Open API v3 authenticates requests with **HMAC-SHA256 signatures**, not OAuth bearer tokens. All public v3 operations documented here use HTTP POST with JSON bodies, including lookups.
+</Note>
 
-* `X-ISPB` and `X-Account-Number` must be sent together with non-empty values.
-* The selected account must be active, belong to the authenticated user, and have a valid account hierarchy.
-* PLATFORM credentials are rejected on account-level endpoints.
-* User-owned managed-account operations and platform operations do not accept account-target headers.
-* When the pair is sent, include both exact trimmed values in the HMAC canonical headers.
+## Before you begin
 
-#### USER credential example for an account-level operation
+Complete [account registration and activation](/getting-started) if you are onboarding your business. Before sending API traffic, confirm the following with your Pagsmile integration representative:
 
-Send both account-target headers before calculating `X-Signature`:
+| You need | What to confirm |
+| --- | --- |
+| Base URL | The endpoint assigned to your integration environment. |
+| Client ID and API secret | The matching credentials for that endpoint. Your client ID is sent as `X-Client-ID`; your secret is used locally to sign requests. |
+| Credential type | Whether your access is PLATFORM, USER, or ACCOUNT, and which operations it permits. |
+| Target account | An active account and, when using USER credentials for an account-level operation, its ISPB and account number. |
 
+Account activation and API access are separate prerequisites for this guide. If you have not received your base URL or credential scope, contact your integration representative before proceeding.
+
+## Configure your environment
+
+The documented base URL for live traffic is:
+
+```text
+https://ebanking-openapi.pagsmile.com.br
 ```
+
+If the integration team provides a different URL for onboarding or validation, use it with the matching credentials. See [Environments](/api-reference/environments) for configuration and isolation rules.
+
+<Warning>
+The URL above is a production endpoint. Use the environment and credentials assigned to you; do not send live customer data to an endpoint intended for onboarding or validation.
+</Warning>
+
+Keep separate secret configuration, logs, and nonce stores for each endpoint. Store the API secret securely on your server. Never send it in a request or include it in logs, browser code, or shared examples.
+
+## Choose the right credential
+
+Your credential determines which operations you can call and how you select an account.
+
+| Credential | Use it for | Account-target headers |
+| --- | --- | --- |
+| **ACCOUNT** | Operations on the single account bound to the credential. | Optional. If supplied, both headers must match the bound account. |
+| **USER** | User-owned operations and permitted account-level operations. | Required for account-level operations. Not accepted by user-owned managed-account operations. |
+| **PLATFORM** | Platform-level master-account operations. | Not accepted. PLATFORM credentials cannot call account-level endpoints. |
+
+<Accordion title="Account-targeting rules">
+
+The account-target headers are `X-ISPB` and `X-Account-Number`.
+
+- Always send them together with non-empty values when explicit targeting is required or allowed.
+- The selected account must be active, belong to the authenticated user, and have a valid account hierarchy.
+- When the headers are present, include both exact trimmed values in the canonical headers **before** calculating the signature.
+- Do not add account-target headers to platform operations or user-owned managed-account operations.
+
+Check each endpoint's **Authentication and target** section before calling it.
+
+</Accordion>
+
+## Sign your request
+
+A signature proves that the request was created using your API secret and has not changed since it was signed. Calculate it from the same method, path, query, headers, and raw body that you send.
+
+<Steps>
+  <Step title="Prepare the body and headers">
+    Serialize the JSON body once and retain its exact raw bytes. Generate a fresh nonce for each call and a Unix timestamp in milliseconds.
+
+    | Header | Requirement | Value |
+    | --- | --- | --- |
+    | `Content-Type` | Required | `application/json` |
+    | `X-Client-ID` | Required | Your client ID. |
+    | `X-Timestamp` | Required | The current Unix timestamp in milliseconds. |
+    | `X-Nonce` | Required | A fresh nonce for this request. |
+    | `X-Signature` | Required | The lowercase hexadecimal HMAC-SHA256 signature calculated below. |
+    | `X-Content-Hash` | Optional | The lowercase hexadecimal SHA-256 digest of the exact raw body. |
+    | `X-ISPB`, `X-Account-Number` | Depends on credential and endpoint | Both account-target values, when required or permitted. |
+
+    Requests outside the five-minute timestamp window are rejected. Nonces are retained for ten minutes to prevent replay.
+  </Step>
+  <Step title="Build the canonical string">
+    Calculate the lowercase hexadecimal SHA-256 hash of the raw body, even if you omit the optional `X-Content-Hash` header.
+
+    Join the following seven components with a single line feed (`\n`). Do not add a trailing line feed:
+
+    ```text
+    UPPERCASE_METHOD
+    normalized_path
+    canonical_query
+    canonical_headers
+    content_hash
+    timestamp
+    nonce
+    ```
+
+    An empty query still occupies its blank line. For a documented path such as `/v3/bank_account`, use the path without the base URL.
+
+    **Canonical headers:** use lowercase names, trim values, and sort names lexically. Always include `content-type`, `x-client-id`, `x-nonce`, and `x-timestamp`. Include `x-content-hash`, `x-account-number`, and `x-ispb` only when those headers are sent. Do not include `X-Signature` itself.
+
+    **Canonical query:** sort parameter names lexically, preserve the original value order for repeated names, and encode names and values using Go `url.QueryEscape` semantics.
+  </Step>
+  <Step title="Calculate the signature">
+    Calculate HMAC-SHA256 over the canonical string using your API secret. Encode the result as **64 lowercase hexadecimal characters** and send it as `X-Signature`.
+
+    Send the exact raw body used to calculate the hash. Changing whitespace, property order, or other body bytes after signing changes the signature input.
+  </Step>
+</Steps>
+
+<Accordion title="Example header set for USER account access">
+
+For an account-level operation with a USER credential, add both target headers before calculating the signature. These are illustrative values; generate a current timestamp, fresh nonce, body hash, and signature for your request.
+
+```http
 Content-Type: application/json
 X-Client-ID: ak_user_demo
 X-ISPB: 12345678
@@ -34,59 +135,107 @@ X-Content-Hash: LOWERCASE_SHA256_OF_RAW_BODY
 X-Signature: LOWERCASE_HMAC_SHA256_SIGNATURE
 ```
 
-When `X-Content-Hash` is sent, the canonical header names are ordered lexically as `content-type`, `x-account-number`, `x-client-id`, `x-content-hash`, `x-ispb`, `x-nonce`, and `x-timestamp`. Omit `x-content-hash` only when that request header is not sent.
+For this header set, the canonical names are ordered as `content-type`, `x-account-number`, `x-client-id`, `x-content-hash`, `x-ispb`, `x-nonce`, and `x-timestamp`. Omit `x-content-hash` from the canonical headers only if you omit that request header.
 
-### 1. Prepare the request
+</Accordion>
 
-Serialize the JSON body exactly once and keep the raw bytes. Generate a fresh nonce for every call and a Unix timestamp in milliseconds.
+## Send your first request
 
-Required headers:
+Use [Get Bank Account](/api-reference/bank-account-and-statements/get-bank-account) to retrieve account information without initiating a payment. It accepts an empty JSON object and requires an ACCOUNT credential or a USER credential with both account-target headers.
 
-* `Content-Type: application/json`
-* `X-Client-ID`
-* `X-Timestamp`
-* `X-Nonce`
-* `X-Signature`
-
-Optional headers:
-
-* `X-Content-Hash` — when present, it must equal the lowercase hexadecimal SHA-256 digest of the exact raw body.
-* `X-ISPB` and `X-Account-Number` — send them together only when the endpoint and credential policy allow explicit account targeting.
-
-Requests outside the five-minute timestamp window are rejected. Nonces are retained for ten minutes to prevent replay.
-
-### 2. Build the canonical string
-
-Join these seven components with a single line feed and do not add a trailing line feed:
-
-```
-UPPERCASE_METHOD
-normalized_path
-canonical_query
-canonical_headers
-content_hash
-timestamp
-nonce
+```http
+POST /v3/bank_account
 ```
 
-Canonical headers always include lowercase `content-type`, `x-client-id`, `x-nonce`, and `x-timestamp`. Include lowercase `x-content-hash`, `x-account-number`, and `x-ispb` only when those headers are sent. Trim values and sort header names lexically.
+The following **request template uses an ACCOUNT credential** bound to the account you want to retrieve. Set `BASE_URL` and `CLIENT_ID` from your issued configuration, then calculate `TIMESTAMP_MS`, `NONCE`, `CONTENT_HASH`, and `SIGNATURE` using the signing steps above. The body to hash and send is exactly `{}`.
 
-For query parameters, sort names lexically, preserve the original value order for repeated names, and encode names and values with Go `url.QueryEscape` semantics. An empty query still occupies its blank line.
+```bash
+curl --request POST "${BASE_URL}/v3/bank_account" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data-binary '{}'
+```
 
-### 3. Sign
+<Tip>
+Using a USER credential? Add `X-ISPB` and `X-Account-Number` to both the request and canonical headers, then recalculate the signature. A PLATFORM credential cannot call this endpoint.
+</Tip>
 
-Calculate HMAC-SHA256 over the canonical string using the API secret and encode the result as 64 lowercase hexadecimal characters. Never send the API secret in the request.
+A successful response contains account identifiers, balances, active PIX keys, limits, webhooks, and fee information. See the [endpoint reference](/api-reference/bank-account-and-statements/get-bank-account) for the complete response and fallback behavior.
 
-### 4. Read the response
+## Handle the response
 
-Every response uses the outer envelope:
+Normal API processing returns a JSON envelope. The example below illustrates its structure; `data` varies by endpoint.
 
 ```json
-{"code":200,"message":"success","data":{},"time":1710000000000}
+{
+  "code": 200,
+  "message": "success",
+  "data": {},
+  "time": 1710000000000
+}
 ```
 
-Use the HTTP status and outer `code` to determine whether the call succeeded. Historical nested `error` or `result` fields do not replace the outer envelope.
+<Warning>
+**HTTP 200 does not necessarily mean the operation succeeded.** Enveloped errors also use HTTP 200. Treat the outer JSON `code` as the business result: `200` means success; every other value means failure.
+</Warning>
 
-### 5. Operate safely
+1. Check the HTTP response and whether it contains a JSON envelope.
+2. For an envelope, read the outer `code`. On failure, `data` is `null`.
+3. Choose your error-handling action by code, not by the localized `message` text.
+4. Handle non-envelope responses separately. Malformed input can return HTTP 400 with plain text; unhandled failures can return plain text, normally with HTTP 500.
 
-Use a new timestamp, nonce, body hash, and signature for every retry. Treat monetary values as decimal strings. Keep credentials for different endpoints separate, and never log API secrets or one-time credential values.
+Historical `error` or `result` fields nested inside `data` do not override the outer result. Use [Error Catalog](/integration-overview/error-catalog) for the full response contract.
+
+<Accordion title="Troubleshoot your first request">
+
+| Outer code | What to check |
+| --- | --- |
+| `4004102` | Required request headers and metadata. |
+| `4004103` | Whether the request's source IP is allowlisted. |
+| `4004104` | Whether the body hash matches the exact bytes sent. |
+| `4004105` | The timestamp unit, current time, and five-minute window. |
+| `4004106` | Nonce validity and whether the nonce was reused. |
+| `4004107` | The canonical string, matching API secret, and signature. |
+| `4004003` | Credential permissions and account scope. |
+| `4004008` / `4004010` | Whether the selected account is active and exists. |
+
+For every retry, generate a fresh timestamp, nonce, body hash, and signature. Follow the endpoint's retry and duplicate-handling rules before repeating an operation.
+
+</Accordion>
+
+## Connect webhooks
+
+Webhooks notify your application about transaction, KYB, and MED events. Pagsmile sends signed HTTP POST requests to your callback URL.
+
+<Steps>
+  <Step title="Choose your events and subscription scope">
+    Use [Webhooks](/webhooks) to identify the event family and permitted owner scope. For the supported PIX and KYB event values, see [Webhook Management](/api-reference/webhook-management). MED uses a separate subscription family; it is not represented by the numeric event values accepted by the management API.
+  </Step>
+  <Step title="Verify each delivery">
+    Retain the raw request body and verify the content hash, signature, timestamp, and nonce before processing the event. Follow [Signature Verification](/webhooks/signature-verification).
+  </Step>
+  <Step title="Accept and process events reliably">
+    Store the event with its documented idempotency key, then return HTTP 200 after durable acceptance. Process asynchronously and handle duplicate or out-of-order deliveries. Use a callback URL that returns HTTP 200 directly, without redirects. See [Delivery and Retries](/webhooks/delivery-and-retries).
+  </Step>
+</Steps>
+
+## Before handling live operations
+
+- Confirm the assigned environment, credential scope, and target account for each operation.
+- Check both successful and failed responses; do not infer success from HTTP status alone.
+- Use decimal strings and decimal arithmetic for monetary values. See [Object & Enums References](/integration-overview/object-and-enums-references).
+- Verify webhook signatures and duplicate handling before relying on event notifications.
+- Keep API secrets and one-time credential values out of logs.
+
+<CardGroup cols={2}>
+  <Card title="Choose an API operation" icon="code" href="/api-reference">
+    Explore endpoints for accounts, transfers, charges, and refunds.
+  </Card>
+  <Card title="Handle errors consistently" icon="circle-exclamation" href="/integration-overview/error-catalog">
+    Map business result codes to the right client behavior.
+  </Card>
+</CardGroup>
