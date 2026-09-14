@@ -1,17 +1,32 @@
 ---
 title: "Bank Account & Statements"
-description: "Inspect the authenticated account and retrieve statement entries."
+description: "Inspect bank account balances and retrieve statement entries via the API."
 ---
 
-Use this section to inspect an account and list its statement entries. Monetary values are JSON strings and must be handled with fixed-point decimal arithmetic.
+This collection of endpoints enables client applications to retrieve account status, monitor balances, and fetch transaction history.
 
-### Endpoints
+> All monetary values (e.g., `balance`, `amount`, `frozen_amount`) are returned as **JSON strings**. Always use fixed-point decimal arithmetic (or arbitrary-precision libraries) to process these values—never parse them directly into floating-point numbers.
 
-* Get bank account — `POST /v3/bank_account`
-* Get statements — `POST /v3/statements`
+![Bank Statements](/images/bank_statements.jpeg "Bank Statements")
 
-### Authentication and account targeting
+### Endpoints Summary
 
-All endpoints use signed POST requests. Send `X-Client-ID`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. `X-Content-Hash` is optional for inbound API calls.
+**Get Bank Account:** Inspect real-time account state, available/frozen balances, registered webhooks, and active PIX keys.
 
-For a USER credential, send both `X-ISPB` and `X-Account-Number` to select the account. An ACCOUNT credential can omit the pair and use its bound account. The credential must be allowed to access the selected account.
+**Get Statements:** Fetch transaction entries (credits/debits), payment metadata, and cursor tokens for pagination.
+
+## Error Reference
+
+Common error causes across all endpoints:
+
+- Missing, expired, or malformed authentication headers (`X-Signature`, `X-Timestamp`, `X-Nonce`).
+- Replayed nonces or invalid content hashes.
+- Insufficient permissions or unmapped downstream service errors.
+
+| **HTTP Code** | **Error Code / Reason** | **Description** |
+| :-- | :-- | :-- |
+| `400` | Bad Request / Invalid Headers | Missing or mismatched target headers (`X-ISPB`, `X-Account-Number`). |
+| `401` | Unauthorized | Signature mismatch or expired timestamp. |
+| `500` | Missing Client Context | Client identity could not be verified internally. |
+| `501` | Account RPC Failure | Downstream account provider communication error. |
+| `4004010` | Nil Account | Target account does not exist or is inaccessible. |
