@@ -1,9 +1,90 @@
 ---
 title: "API Reference"
-description: "Implementation-backed reference for 40 Open API v3 operations."
+description: "Find the right Open API v3 endpoint and understand the rules for every request."
 ---
 
-Implementation-backed reference for Pagsmile Open API v3 operations.
+Build your integration with Pagsmile Open API v3. Choose an operation below to work with accounts, PIX and TED transfers, refunds, QR codes, onboarding, and webhook subscriptions.
+
+Each endpoint documents its request, credential requirements, response, and validation rules. This reference covers 40 operations; availability and account access depend on the endpoint and your credential scope.
+
+## Before your first request
+
+<Steps>
+  <Step title="Confirm your environment">
+    Use the base URL and matching credentials supplied for your integration. See [Environments](/api-reference/environments) for client configuration.
+  </Step>
+  <Step title="Check access and sign the request">
+    Identify your credential owner, check the endpoint's account-target rules, and generate the HMAC-SHA256 signature. Follow the [Integration Overview](/integration-overview#sign-your-request), or use the [signing reference below](#request-signing).
+  </Step>
+  <Step title="Read the result in context">
+    Check the outer API result code, then interpret the returned operation status. Use [Error Catalog](/integration-overview/error-catalog) for failures and [Object & Enums References](/integration-overview/object-and-enums-references) for shared fields and values.
+  </Step>
+</Steps>
+
+## Find an endpoint
+
+### Accounts and payments
+
+<CardGroup cols={2}>
+  <Card title="Bank Account & Statements" icon="building-columns" href="/api-reference/bank-account-and-statements">
+    Inspect account details and balances, then retrieve statement entries.
+  </Card>
+  <Card title="Transfers" icon="arrow-right-arrow-left" href="/api-reference/transfers">
+    Initiate and confirm PIX transfers, send PIX or TED to bank accounts, and check transfer results.
+  </Card>
+  <Card title="Charges" icon="receipt" href="/api-reference/charges">
+    Retrieve the details of an incoming PIX charge by transaction identifier.
+  </Card>
+  <Card title="Refunds" icon="rotate-left" href="/api-reference/refunds">
+    Refund an eligible incoming PIX payment and inspect its details or processing status.
+  </Card>
+  <Card title="QR Codes" icon="qrcode" href="/api-reference/qr-codes">
+    Generate static or dynamic PIX QR codes and retrieve QR-code details.
+  </Card>
+  <Card title="PIX Keys" icon="key" href="/api-reference/pix-keys">
+    Create or delete PIX keys for an account.
+  </Card>
+</CardGroup>
+
+### Onboarding and operations
+
+<CardGroup cols={2}>
+  <Card title="Master Accounts" icon="building" href="/api-reference/master-accounts">
+    Create and manage master-account onboarding records, or retrieve an existing account.
+  </Card>
+  <Card title="Managed Accounts" icon="users" href="/api-reference/managed-accounts">
+    Manage MOR, VA, and PA accounts and retrieve credentials for eligible active MOR or VA accounts.
+  </Card>
+  <Card title="Webhook Management" icon="webhook" href="/api-reference/webhook-management">
+    Create, retrieve, list, update, or delete callback subscriptions within your credential-owner scope.
+  </Card>
+  <Card title="MED & Infractions" icon="shield-halved" href="/api-reference/med-and-infractions">
+    Manage payer-side MED cases and inspect related infraction records available to your account.
+  </Card>
+</CardGroup>
+
+<Note>
+Managed-account credential rotation is documented in the HTTP contract, but the current service returns an unsupported-operation error. It is not an available production capability. See [Managed Accounts](/api-reference/managed-accounts#credential-behavior).
+</Note>
+
+## Common integration tasks
+
+| I want to… | Start here | What to check next |
+| --- | --- | --- |
+| Inspect an account or reconcile activity | [Get Bank Account](/api-reference/bank-account-and-statements/get-bank-account) | [Get Statements](/api-reference/bank-account-and-statements/get-statements) |
+| Send PIX using a key | [Initiate PIX Transfer by Key](/api-reference/transfers/initiate-pix-transfer-by-key) | [Confirm PIX Transfer by Key](/api-reference/transfers/confirm-pix-transfer-by-key) |
+| Send PIX using a QR code | [Initiate PIX Transfer by QR Code](/api-reference/transfers/initiate-pix-transfer-by-qr-code) | [Confirm PIX Transfer by QR Code](/api-reference/transfers/confirm-pix-transfer-by-qr-code) |
+| Check an outgoing transfer | [Check Transfer Status](/api-reference/transfers/check-transfer-status) | [Get Transfer Details](/api-reference/transfers/get-transfer-details) |
+| Refund an incoming PIX payment | [Create PIX Refund](/api-reference/refunds/create-pix-refund) | [Check Refund Status](/api-reference/refunds/check-refund-status) |
+| Receive event notifications | [Webhook Management](/api-reference/webhook-management) | [Webhook Signature Verification](/webhooks/signature-verification) and [Delivery and Retries](/webhooks/delivery-and-retries) |
+
+<Warning>
+A successful API call does not by itself confirm final settlement. PIX key and QR-code transfers require an initiate/confirm flow. Follow the endpoint-specific status rules, and check the original operation's outcome before retrying an uncertain submission.
+</Warning>
+
+## Request rules
+
+The following rules apply across the reference. Always check the endpoint's **Authentication and target** section for its supported credential owners and any route-specific exceptions.
 
 ### Authentication model
 
