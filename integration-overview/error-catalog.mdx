@@ -1,76 +1,204 @@
 ---
 title: "Error Catalog"
-description: "Handle Open API v3 envelopes and business codes correctly."
+description: "Understand API result codes, diagnose failures, and choose the right recovery action."
 ---
 
-All Open API v3 handlers use one outer result contract during normal processing.
+Use this catalog to interpret an Open API v3 response, identify the cause of a failure, and decide what to do next. Start with the outer result code, then check the rules for the endpoint you called.
 
-### Response envelope
+<Warning>
+**HTTP 200 does not guarantee success.** Normal API results, including errors, use HTTP 200. The outer JSON `code` is authoritative: `200` means success; every other value means failure.
+</Warning>
 
-```json
-{"code":200,"message":"success","data":{},"time":1767225600000}
+<CardGroup cols={2}>
+  <Card title="Find a result code" icon="magnifying-glass" href="#business-codes">Browse codes by category and see the recommended next check.</Card>
+  <Card title="Decide whether to retry" icon="rotate" href="#retry-guidance">Distinguish a correctable request from an uncertain operation outcome.</Card>
+</CardGroup>
+
+## Read the response
+
+Normal processing returns a JSON envelope. These examples illustrate the structure; error message wording can vary.
+
+<CodeGroup>
+```json Success
+{
+  "code": 200,
+  "message": "success",
+  "data": {},
+  "time": 1767225600000
+}
 ```
 
-* `code` is the authoritative business result. `200` means success; every other value means failure.
-* Every enveloped result currently uses HTTP 200, including validation, authentication, permission, business, and dependency failures.
-* On an enveloped failure, `data` is `null`.
-* `message` is localized display text and can be replaced by a normalized upstream public message. Never branch on it.
-* A legacy error object nested inside successful `data` does not change the outer result.
-* Malformed JSON, form, path, or query input can return non-envelope `text/plain` with HTTP 400. A recovered panic or unhandled wrapper failure is non-envelope text, normally HTTP 500.
+```json "Illustrative failure"
+{
+  "code": 4004104,
+  "message": "Content hash mismatch",
+  "data": null,
+  "time": 1767225600000
+}
+```
+</CodeGroup>
 
-### Business codes
+| Field | How to use it |
+| --- | --- |
+| `code` | Use the outer numeric code to determine the business result. |
+| `message` | Treat as display text. It may be localized or replaced by a normalized upstream public message; never use it for program logic. |
+| `data` | Contains the endpoint result on success and is `null` on an enveloped failure. |
+| `time` | Retain the returned value when recording the response for troubleshooting. |
 
-| Code                 | Meaning                                                                          | HTTP transport |
-| -------------------- | -------------------------------------------------------------------------------- | -------------- |
-| `200`                | Success                                                                          | 200            |
-| `400`                | Invalid request or validation failure                                            | 200            |
-| `4000`               | Required field missing                                                           | 200            |
-| `4001`               | Invalid field value                                                              | 200            |
-| `4002`               | Invalid field format                                                             | 200            |
-| `4003`               | Field value out of range                                                         | 200            |
-| `4001001`            | Invalid PIX key                                                                  | 200            |
-| `4001002 / 4001003`  | Invalid account / account type                                                   | 200            |
-| `4001004`            | Invalid amount or amount limit                                                   | 200            |
-| `4001010`            | Invalid QR code                                                                  | 200            |
-| `4001011 / 4001012`  | Request expired / invalid time range                                             | 200            |
-| `4001013`            | Already processed or duplicate request                                           | 200            |
-| `4001014 / 4001015`  | QR already used / expired                                                        | 200            |
-| `4001090`            | PIX key already linked                                                           | 200            |
-| `4001092`            | KYC/KYB status invalid or incomplete                                             | 200            |
-| `4001093`            | Self-payment is not allowed                                                      | 200            |
-| `4001094`            | PIX key linked by a third party                                                  | 200            |
-| `4001096`            | PIX key inactive or deleted                                                      | 200            |
-| `4001998 / 4001999`  | Limit reached / insufficient funds                                               | 200            |
-| `4002003`            | Information or application already registered                                    | 200            |
-| `4003003`            | Transaction detail not found                                                     | 200            |
-| `4003005`            | Refund processing failed or amount rejected                                      | 200            |
-| `4003008`            | Authentication required                                                          | 200            |
-| `4003012`            | PIX validation failed                                                            | 200            |
-| `4003014`            | Payment processing failed                                                        | 200            |
-| `4003016`            | Transaction risk-control or AML failure                                          | 200            |
-| `4004003`            | Permission denied; wording can also represent MED payout unavailable             | 200            |
-| `4004004`            | Resource not found                                                               | 200            |
-| `4004008 / 4004010`  | Account inactive / account not found                                             | 200            |
-| `4004029`            | Too many requests                                                                | 200            |
-| `4004101`            | Authorization required                                                           | 200            |
-| `4004102`            | Invalid request metadata or header                                               | 200            |
-| `4004103`            | Source IP is not allowlisted                                                     | 200            |
-| `4004104`            | Content hash mismatch                                                            | 200            |
-| `4004105`            | Timestamp invalid or expired                                                     | 200            |
-| `4004106`            | Nonce invalid or replayed                                                        | 200            |
-| `4004107`            | Signature invalid                                                                | 200            |
-| `401`                | Invalid user                                                                     | 200            |
-| `4010 / 4011 / 4012` | Authentication failed / invalid token / expired token                            | 200            |
-| `500`                | Safe system-error fallback                                                       | 200            |
-| `501 / 502 / 503`    | Service unavailable / bank busy / temporarily unsupported                        | 200            |
-| `504`                | Compliance verification temporarily unavailable; retry with the same request\_id | 200            |
+A legacy error object nested inside successful `data` does not change the outer result. For transaction state, read the endpoint-specific status fields separately.
 
-### Client handling
+### HTTP status and business result
 
-1. Parse the JSON envelope when the response is JSON.
-2. Treat outer `code === 200` as success.
-3. For any other outer code, apply retry or user-action policy by code. Do not infer success from HTTP 200.
-4. Treat `message` only as display text.
-5. Handle raw HTTP 400 or 500 text separately because no envelope is guaranteed.
+| Response | Interpretation | Client action |
+| --- | --- | --- |
+| HTTP 200 with outer `code: 200` | The API call succeeded. | Process `data` according to the endpoint contract. |
+| HTTP 200 with any other outer `code` | The API returned a failure. | Look up the business code below. |
+| HTTP 400 with plain text | Malformed JSON, form, path, or query input can produce a response without an envelope. | Check the request format and handle the text response separately. |
+| Plain-text failure, normally HTTP 500 | An unhandled server failure can bypass the envelope. | Record the transport failure and assess the operation outcome before retrying. |
 
-Only the business codes listed above are part of the client contract. Do not branch on internal enum names or raw provider diagnostics; they are implementation details and can change without notice.
+<Note>
+A JSON business code such as `401`, `500`, or `504` is not the HTTP status. For example, outer `code: 504` describes unavailable compliance verification and is delivered in an HTTP 200 envelope.
+</Note>
+
+## Business codes
+
+All codes in this section use **HTTP 200 when returned in the API envelope**. The meanings are part of the documented contract. The next-check column is troubleshooting guidance, not a guarantee that a retry will succeed. Endpoint-specific behavior takes precedence.
+
+Use your browser’s Find command (`⌘F` on Mac or `Ctrl+F` on Windows) to locate an exact code. All code tables remain visible on the page.
+
+### Success
+
+| Code | Meaning | Next check |
+| --- | --- | --- |
+| `200` | Success | Read the endpoint-specific data. A successful API call does not by itself guarantee a final payment status. |
+
+### Request validation
+
+| Code | Meaning | Next check |
+| --- | --- | --- |
+| `400` | Invalid request or validation failure | Check the endpoint schema and correct the request before resubmitting. |
+| `4000` | Required field missing | Supply the required field listed in the endpoint reference. |
+| `4001` | Invalid field value | Check the field value against the documented allowed values. |
+| `4002` | Invalid field format | Check the expected format and JSON type. |
+| `4003` | Field value out of range | Check the documented minimum, maximum, and time or amount bounds. |
+| `4001011 / 4001012` | Request expired / invalid time range | Check request freshness and the permitted time range. |
+
+### Authentication and permissions
+
+| Code | Meaning | Next check |
+| --- | --- | --- |
+| `4003008` | Authentication required | Check the endpoint authentication and account-target requirements. |
+| `4004003` | Permission denied; wording can also represent MED payout unavailable | Check credential permissions and endpoint context. For MED, also check payout availability. |
+| `4004101` | Authorization required | Check the credential type and authorization required by the endpoint. |
+| `4004102` | Invalid request metadata or header | Check required headers, their formats, and account-target metadata. |
+| `4004103` | Source IP is not allowlisted | Confirm the outbound source IP with your integration representative. |
+| `4004104` | Content hash mismatch | Hash the exact raw body bytes sent; do not modify the body after signing. |
+| `4004105` | Timestamp invalid or expired | Use Unix milliseconds and check your server clock against the five-minute acceptance window. |
+| `4004106` | Nonce invalid or replayed | Use a valid fresh nonce for each request; never replay a signed request. |
+| `4004107` | Signature invalid | Check the matching API secret and rebuild the canonical string from the exact request. |
+| `401` | Invalid user | Check the authenticated user and credential context. |
+| `4010 / 4011 / 4012` | Authentication failed / invalid token / expired token | Check the endpoint-specific authentication context. Open API v3 still requires HMAC signing; these labels do not imply OAuth bearer-token support. |
+
+### Accounts and verification
+
+| Code | Meaning | Next check |
+| --- | --- | --- |
+| `4001092` | KYC/KYB status invalid or incomplete | Check the account verification status and complete the required verification steps. |
+| `4002003` | Information or application already registered | Find the existing registration and continue its documented workflow. |
+| `4004004` | Resource not found | Check the resource identifier and its account scope. |
+| `4004008 / 4004010` | Account inactive / account not found | Check that the selected account exists and is active. |
+
+### PIX keys and QR codes
+
+| Code | Meaning | Next check |
+| --- | --- | --- |
+| `4001001` | Invalid PIX key | Check the PIX key value and type. |
+| `4001010` | Invalid QR code | Check the QR payload and use the documented QR workflow. |
+| `4001014 / 4001015` | QR already used / expired | Check the QR status; do not reuse a consumed or expired QR. |
+| `4001090` | PIX key already linked | Check the existing PIX key association before submitting again. |
+| `4001094` | PIX key linked by a third party | Check key ownership. Repeating the same request will not resolve an ownership conflict. |
+| `4001096` | PIX key inactive or deleted | Check the PIX key status and select a valid active key. |
+
+### Payments and refunds
+
+| Code | Meaning | Next check |
+| --- | --- | --- |
+| `4001002 / 4001003` | Invalid account / account type | Check the account identifiers and account-type enum. |
+| `4001004` | Invalid amount or amount limit | Check the amount format and applicable transaction limits. |
+| `4001013` | Already processed or duplicate request | Look up the existing operation before considering another submission. |
+| `4001093` | Self-payment is not allowed | Review the payer and payee; this operation does not permit self-payment. |
+| `4001998 / 4001999` | Limit reached / insufficient funds | Check applicable limits and available funds before attempting another operation. |
+| `4003003` | Transaction detail not found | Check the transaction identifier and selected account. |
+| `4003005` | Refund processing failed or amount rejected | Check the original transaction, refundable amount, and current refund status. |
+| `4003012` | PIX validation failed | Review the PIX request against the endpoint validation rules. |
+| `4003014` | Payment processing failed | Check transaction status before deciding whether to submit another payment. |
+| `4003016` | Transaction risk-control or AML failure | Review the operation with your Pagsmile representative; do not retry to bypass a risk or compliance decision. |
+
+### Rate limits and service availability
+
+| Code | Meaning | Next check |
+| --- | --- | --- |
+| `4004029` | Too many requests | Reduce request frequency. Apply the retry guidance below before resubmitting. |
+| `500` | Safe system-error fallback | Record the failure and assess the operation outcome before retrying. Escalate persistent failures. |
+| `501 / 502 / 503` | Service unavailable / bank busy / temporarily unsupported | Check service availability with your integration representative and follow the retry guidance below. |
+| `504` | Compliance verification temporarily unavailable; retry with the same request\_id | For a technical retry of compliance verification, keep the same request_id and generate fresh signing metadata. |
+
+See [Integration Overview](/integration-overview#sign-your-request) for signing and account-targeting requirements. Only the documented business codes form the client contract. Do not branch on internal enum names or raw provider diagnostics.
+
+## Retry guidance
+
+Before retrying, identify whether you need to correct the request, resolve an account condition, or establish the outcome of the original operation.
+
+<Steps>
+  <Step title="Correct the cause first">
+    For invalid fields, signatures, permissions, account state, or PIX key state, address the reported condition before resubmitting. A new signature does not fix an invalid amount or missing permission.
+  </Step>
+  <Step title="Check the original operation">
+    After a timeout, connection loss, duplicate result, or payment-processing failure, check the existing operation before sending another payment. Use [Check Transfer Status](/api-reference/transfers/check-transfer-status) when you have the required identifiers. If the outcome remains unclear, contact your integration representative.
+
+    Several transfer endpoints document no endpoint-specific idempotency key. Do not assume that repeating a request is safe merely because the original response was missing or unsuccessful.
+  </Step>
+  <Step title="Preserve the operation identity where documented">
+    For compliance code `504`, retry with the **same `request_id`**. [Create Master Account](/api-reference/master-accounts/create-master-account) requires stable request and reference identifiers for technical retries. [Update Master Account](/api-reference/master-accounts/update-master-account) distinguishes a technical retry from a genuinely new compliance round.
+
+    Follow the identifier rules of the specific endpoint; do not add a universal idempotency header or field that the endpoint does not document.
+  </Step>
+  <Step title="Generate fresh signing metadata">
+    For every retry, generate a new timestamp and nonce, recalculate the body hash, and sign the exact request again. Keeping a business `request_id` stable does not mean reusing the original signature or nonce.
+  </Step>
+</Steps>
+
+<Accordion title="Rate limiting and temporary service failures">
+
+For `4004029`, reduce request frequency. For service failures, confirm whether the operation can be retried before doing so. As a client-design recommendation, use bounded retries with increasing delays and jitter for operations you have established are safe to repeat. Stop after a defined limit and escalate persistent failures.
+
+This catalog does not define a universal retry interval, attempt count, or guaranteed recovery time. A service-error code alone does not establish that a payment was never executed.
+
+</Accordion>
+
+## Implement consistent client handling
+
+1. Record the HTTP status and inspect the response type.
+2. Parse JSON when applicable and validate that the expected envelope is present.
+3. Treat outer `code === 200` as success; handle every other code as a failure.
+4. Select a recovery action by code and endpoint context, never by message text.
+5. Handle plain text, malformed responses, and network failures separately.
+6. For an unrecognized code, retain the diagnostic context and escalate instead of assuming success or repeatedly retrying.
+
+## Get help with a failure
+
+If the cause is unclear or the problem persists, contact your Pagsmile integration representative. Include enough context to locate the request:
+
+- The environment and endpoint path.
+- The request time and timezone, HTTP status, and outer business code.
+- The returned message and `time` value, if available.
+- Relevant request, reference, or transaction identifiers, when the endpoint provides them.
+- A description of the expected result, actual result, and any retries already attempted.
+- A sanitized request and response example when needed to reproduce the issue.
+
+Remove API secrets, passwords, one-time credentials, and unnecessary customer information before sharing logs or examples.
+
+<CardGroup cols={2}>
+  <Card title="Review request signing" icon="key" href="/integration-overview#sign-your-request">Check canonicalization, headers, timestamps, and account targeting.</Card>
+  <Card title="Check endpoint behavior" icon="book-open" href="/api-reference">Find validation rules, status fields, and operation-specific retry constraints.</Card>
+</CardGroup>
