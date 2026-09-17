@@ -1,32 +1,140 @@
 ---
 title: "Bank Account & Statements"
-description: "Inspect bank account balances and retrieve statement entries via the API."
+description: "Retrieve account balances and configuration, or explore transaction history for a selected account."
 ---
 
-This collection of endpoints enables client applications to retrieve account status, monitor balances, and fetch transaction history.
+Use these two read operations to understand an account’s current state and its transaction activity. Both use signed `POST` requests.
 
-> All monetary values (e.g., `balance`, `amount`, `frozen_amount`) are returned as **JSON strings**. Always use fixed-point decimal arithmetic (or arbitrary-precision libraries) to process these values—never parse them directly into floating-point numbers.
+## Choose an operation
 
-![Bank Statements](/images/bank_statements.jpeg "Bank Statements")
+<CardGroup cols={2}>
+  <Card title="Get Bank Account" icon="building-columns" href="/api-reference/bank-account-and-statements/get-bank-account">
+    Retrieve the current balance, MED and other frozen amounts, active PIX keys, limits, fees, and registered webhooks.
 
-### Endpoints Summary
+    `POST /v3/bank_account`
+  </Card>
+  <Card title="Get Statements" icon="list" href="/api-reference/bank-account-and-statements/get-statements">
+    Retrieve transaction ledger entries, credit and debit history, payment method details, and pagination cursor metadata.
 
-**Get Bank Account:** Inspect real-time account state, available/frozen balances, registered webhooks, and active PIX keys.
+    `POST /v3/statements`
+  </Card>
+</CardGroup>
 
-**Get Statements:** Fetch transaction entries (credits/debits), payment metadata, and cursor tokens for pagination.
+Use **Get Bank Account** when you need account details or a balance breakdown. Use **Get Statements** when you need individual transaction entries. Each endpoint reference contains its request and response examples.
 
-## Error Reference
+## What each operation returns
 
-Common error causes across all endpoints:
+### Account balances and configuration
 
-- Missing, expired, or malformed authentication headers (`X-Signature`, `X-Timestamp`, `X-Nonce`).
-- Replayed nonces or invalid content hashes.
-- Insufficient permissions or unmapped downstream service errors.
+[Get Bank Account](/api-reference/bank-account-and-statements/get-bank-account) returns the selected account’s current details and related configuration.
 
-| **HTTP Code** | **Error Code / Reason** | **Description** |
-| :-- | :-- | :-- |
-| `400` | Bad Request / Invalid Headers | Missing or mismatched target headers (`X-ISPB`, `X-Account-Number`). |
-| `401` | Unauthorized | Signature mismatch or expired timestamp. |
-| `500` | Missing Client Context | Client identity could not be verified internally. |
-| `501` | Account RPC Failure | Downstream account provider communication error. |
-| `4004010` | Nil Account | Target account does not exist or is inaccessible. |
+| Information | What it includes |
+| --- | --- |
+| Current balance and breakdown | `balance`, `available_amount`, and total `frozen_amount`, together with `currency`. |
+| Frozen amounts: MED and other | `med_frozen_amount` identifies the MED component. `other_frozen_amount` is the total frozen amount minus the MED component, clamped at zero. |
+| Active PIX keys | `pix_keys[]` lists the account’s active PIX keys and their associated metadata. Inactive keys are not included. |
+| Fee and limit configurations | `fee_configs[]` contains fee configurations; `limit_config` contains account limit configuration. |
+| Registered webhooks | `webhooks[]` lists the webhooks registered for the account. |
+
+See [Account balances and optional data](#account-data) for the fallback behavior when related lookups fail.
+
+### Transaction history and pagination
+
+[Get Statements](/api-reference/bank-account-and-statements/get-statements) returns transaction ledger entries for the selected account.
+
+| Information | What it includes |
+| --- | --- |
+| Transaction ledger entries | `statements[]` contains transaction and settlement identifiers, `amount`, `memo`, timestamps, and transaction status/type fields. |
+| Credit and debit history | `is_credit` indicates whether an entry is a credit (`true`) or a debit (`false`). The entry’s monetary value is returned in `amount`. |
+| Pagination cursor metadata | The response includes `snapshot_timestamp` and a cursor with `timestamp` and `id` for subsequent requests. |
+| Payment method details | `payment_method` and `payment_variant` identify the payment method and variant as numeric enum values. Use [Objects & Enums](/integration-overview/object-and-enums-references) to interpret them. |
+
+## Select the account
+
+The credential identifies who is making the request. Account-target headers identify the account to read. Your credential must have permission to access that account.
+
+| Credential | Account-target headers | Account selection |
+| --- | --- | --- |
+| `ACCOUNT` | You may omit `X-ISPB` and `X-Account-Number`. | Uses the account bound to the credential. If you send the headers, send both and ensure they match that account. |
+| `USER` | Send both `X-ISPB` and `X-Account-Number`. | Uses the selected account, subject to the credential’s permissions. |
+| Platform | Not supported. | Platform credentials are not accepted by either operation. |
+
+<Note>
+  When you send account-target headers, include their exact trimmed values in the canonical header set before calculating `X-Signature`.
+</Note>
+
+## Prepare your request
+
+<Steps>
+  <Step title="Choose the environment">
+    Use the base URL and matching credentials assigned to your integration. See [Environments](/api-reference/environments) for configuration and isolation rules.
+  </Step>
+  <Step title="Build the endpoint request">
+    Choose the operation above, confirm the target account, and prepare the JSON body described in its reference. Send `Content-Type: application/json`.
+  </Step>
+  <Step title="Sign the exact request">
+    Send `X-Client-ID`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. `X-Content-Hash` is optional for inbound API calls; if included, it must match the body you send.
+
+    Follow [Request signing](/api-reference#request-signing) for the complete HMAC-SHA256 signing rules.
+  </Step>
+</Steps>
+
+## Handle the response
+
+### Preserve monetary precision
+
+<Warning>
+  Monetary values such as `balance`, `available_amount`, `frozen_amount`, and statement `amount` are returned as **JSON strings**. Use fixed-point decimal arithmetic or an arbitrary-precision decimal library. Do not convert these values to binary floating-point numbers.
+</Warning>
+
+The following illustrative response fragment shows the monetary field types; it is not a complete response.
+
+```json
+{
+  "balance": "100.00",
+  "frozen_amount": "20.00",
+  "available_amount": "80.00"
+}
+```
+
+### Interpret account data and statement entries
+
+<AccordionGroup>
+  <Accordion title="Account balances and optional data" id="account-data">
+    Get Bank Account returns the account’s balance breakdown and related configuration. Only active PIX keys are returned.
+
+    If balance-snapshot retrieval fails, the request can still succeed with balance components set to `"0"` and `currency` set to `"BRL"`. PIX-key or webhook lookup failures can return empty lists; limit or fee lookup failures can return `null`. Basic-account lookup errors remain fatal.
+
+    A successful response therefore does not guarantee that every related lookup succeeded. Review the [Get Bank Account reference](/api-reference/bank-account-and-statements/get-bank-account) before interpreting zero balances or missing optional data.
+  </Accordion>
+  <Accordion title="Statement entries and pagination" id="statement-data">
+    Get Statements returns entries in `statements[]`, together with `snapshot_timestamp` and cursor information. Each entry includes a decimal-string `amount`, transaction identifiers, and transaction metadata.
+
+    Use `is_credit` to distinguish credits from debits. A returned cursor contains `timestamp` and `id` for subsequent requests. See [Get Statements](/api-reference/bank-account-and-statements/get-statements) for the endpoint contract and response example.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshoot a request
+
+<Note>
+  Check the outer JSON `code`, not just the HTTP status. Normal API results use HTTP `200`, including business errors. An outer `code` of `200` means success; other values indicate failure. Plain-text transport errors require separate handling.
+</Note>
+
+| What to check | Recommended action |
+| --- | --- |
+| Missing or mismatched account headers | Check the credential type and the account-selection rules above. Send the target headers as a pair when required. |
+| Authentication, timestamp, or nonce failure | Confirm the required signing headers, timestamp format, and a fresh nonce for each request. Recalculate the signature for the exact request. |
+| Content-hash or signature mismatch | Check the raw body bytes, canonical path, query, and signed headers against what was actually sent. |
+| Permission or account-context failure | Confirm that the credential can access the selected account. |
+| Downstream service failure | Record the response code and message, then follow the endpoint-specific guidance and Error Catalog. |
+
+For Get Bank Account, documented endpoint-specific codes include `500` (missing client context), `501` (account-provider RPC failure), and `4004010` (account not found). Treat these as API result codes when returned in the JSON envelope, not as HTTP status codes. Other provider errors may also be returned.
+
+<CardGroup cols={2}>
+  <Card title="Error Catalog" icon="circle-exclamation" href="/integration-overview/error-catalog">
+    Look up result codes and identify the appropriate next check.
+  </Card>
+  <Card title="Objects & Enums" icon="code" href="/integration-overview/object-and-enums-references">
+    Interpret shared objects and numeric enum values in API responses.
+  </Card>
+</CardGroup>
