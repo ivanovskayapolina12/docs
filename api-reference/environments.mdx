@@ -1,33 +1,119 @@
 ---
 title: "Environments"
-description: "Configure the base URL supplied for your integration environment."
+description: "Choose the correct API base URL, pair it with your credentials, and configure your client."
 ---
 
-Pagsmile Open API v3 uses the following base URL for live traffic:
+Connect to the API environment assigned to your integration. Keep its base URL and credentials together, then append the documented v3 path for each operation.
 
-```
+## Choose your base URL
+
+### Live API
+
+Use this base URL for live traffic:
+
+```text
 https://ebanking-openapi.pagsmile.com.br
 ```
 
-Credentials and base URLs are issued as a matching set. If the Pagsmile integration team provides another base URL during onboarding or validation, use it only with the matching credentials.
+| Connection | Base URL | Credentials |
+| --- | --- | --- |
+| Live | `https://ebanking-openapi.pagsmile.com.br` | Use the credentials issued for this base URL. |
+| Onboarding or validation, if provided | Use the exact URL supplied by your Pagsmile integration representative. | Use only the credentials issued for that URL. |
 
-### Configure your client
+<Warning>
+The live API is for real traffic. Do not send live customer data to an endpoint intended for onboarding or validation.
+</Warning>
+
+<Note>
+Credentials and base URLs are issued as a matching set. If you have not received a base URL or confirmed your credential scope, contact your Pagsmile integration representative before sending traffic.
+</Note>
+
+## Configure your client
+
+<Steps>
+  <Step title="Set the base URL">
+
+Store the assigned URL in your client configuration. For live traffic, the shell configuration is:
 
 ```bash
 export BASE_URL="https://ebanking-openapi.pagsmile.com.br"
 ```
 
-Append the documented v3 path without rewriting it:
+If Pagsmile has provided a different URL for onboarding or validation, use that exact value with its matching credentials.
 
+  </Step>
+  <Step title="Append the endpoint path">
+
+Append the path exactly as documented. For example, [Get Charge Details](/api-reference/charges/get-charge-details) uses `/v3/charges/details`. Keep `/v3` in the endpoint path rather than adding it to the base URL.
+
+```bash
+REQUEST_URL="${BASE_URL}/v3/charges/details"
+printf '%s\n' "$REQUEST_URL"
 ```
-"${BASE_URL}/v3/charges/details"
+
+With the live base URL, this prints:
+
+```text
+https://ebanking-openapi.pagsmile.com.br/v3/charges/details
 ```
 
-### Environment isolation
+This example only constructs and prints the URL. It does not send an API request.
 
-* Credentials are endpoint-specific.
-* Do not send live customer data to an endpoint intended for onboarding or validation.
-* Keep separate nonce stores, logs, and secret configuration for each endpoint.
-* Generate the signature from the exact host-independent path, query, headers, and raw body sent with the request.
+  </Step>
+  <Step title="Apply the matching credentials and sign">
 
-If you have not received a base URL or credential scope, contact your Pagsmile integration representative before sending traffic.
+Use the credentials issued for the selected base URL. Check the endpoint’s **Authentication and target** section for the supported credential owner and any account-target headers.
+
+Generate the signature from the exact host-independent path, query, headers, and raw body you will send. In this example, the signing path is `/v3/charges/details`; the scheme and hostname are not part of that path.
+
+Follow [Request signing](/api-reference#request-signing) for the complete signing rules.
+
+  </Step>
+</Steps>
+
+## Environment isolation
+
+Keep each environment’s configuration and request state separate.
+
+| What to isolate | How to handle it |
+| --- | --- |
+| Base URL and credentials | Keep them as a matching configuration set. Do not reuse credentials with a different base URL. |
+| Nonce stores | Maintain a separate store for each API environment. Use a unique nonce for each client request. |
+| Logs | Keep logs separate for each environment so you can identify where a request was sent. |
+| Secret configuration | Maintain separate secret configuration for each environment. |
+| Customer data | Do not send live customer data to onboarding or validation endpoints. |
+
+## Before you send a request
+
+Confirm that:
+
+- The configured base URL is the one supplied for your intended environment.
+- The credentials belong to that base URL and have the scope required by the operation.
+- The outgoing request uses the exact documented path, including `/v3`.
+- The signature matches the path, query, headers, and raw body actually transmitted.
+- Your nonce store, logs, and secret configuration are separated by environment.
+
+## Connection questions
+
+<AccordionGroup>
+  <Accordion title="I have not received an onboarding or validation URL" id="missing-environment-url" icon="circle-question">
+    Contact your Pagsmile integration representative to confirm the environment available to you and obtain its matching credentials. Use an alternate URL only when Pagsmile provides it.
+  </Accordion>
+  <Accordion title="I am changing the API base URL" id="changing-environments" icon="arrow-right-arrow-left">
+    Switch to the credentials and configuration assigned to the new environment. Select its nonce store and logs, and sign the exact request you will transmit. Changing the hostname alone does not establish access to another environment.
+  </Accordion>
+  <Accordion title="My request fails authentication" id="authentication-checks" icon="key">
+    First confirm the base URL and credential pairing. Then review the endpoint’s credential scope, account-target rules, and [request signing requirements](/api-reference#request-signing). For an API error response, use [Error Catalog](/integration-overview/error-catalog#authentication-and-permissions) to choose the next check.
+  </Accordion>
+</AccordionGroup>
+
+## Continue your integration
+
+<CardGroup cols={2}>
+  <Card title="Prepare a signed request" icon="fingerprint" href="/integration-overview#sign-your-request">
+    Follow the integration guide for credentials, signing, and response handling.
+  </Card>
+  <Card title="Choose an API operation" icon="code" href="/api-reference#find-an-endpoint">
+    Find the endpoint for your task and check its access requirements.
+  </Card>
+</CardGroup>
