@@ -9,18 +9,45 @@ Use these two read operations to understand an account’s current state and its
 
 <CardGroup cols={2}>
   <Card title="Get Bank Account" icon="building-columns" href="/api-reference/bank-account-and-statements/get-bank-account">
-    Retrieve balances, active PIX keys, limits, registered webhooks, and fee configurations.
+    Retrieve the current balance, MED and other frozen amounts, active PIX keys, limits, fees, and registered webhooks.
 
     `POST /v3/bank_account`
   </Card>
   <Card title="Get Statements" icon="list" href="/api-reference/bank-account-and-statements/get-statements">
-    Retrieve credit and debit entries, transaction metadata, and cursor information for pagination.
+    Retrieve transaction ledger entries, credit and debit history, payment method details, and pagination cursor metadata.
 
     `POST /v3/statements`
   </Card>
 </CardGroup>
 
 Use **Get Bank Account** when you need account details or a balance breakdown. Use **Get Statements** when you need individual transaction entries. Each endpoint reference contains its request and response examples.
+
+## What each operation returns
+
+### Account balances and configuration
+
+[Get Bank Account](/api-reference/bank-account-and-statements/get-bank-account) returns the selected account’s current details and related configuration.
+
+| Information | What it includes |
+| --- | --- |
+| Current balance and breakdown | `balance`, `available_amount`, and total `frozen_amount`, together with `currency`. |
+| Frozen amounts: MED and other | `med_frozen_amount` identifies the MED component. `other_frozen_amount` is the total frozen amount minus the MED component, clamped at zero. |
+| Active PIX keys | `pix_keys[]` lists the account’s active PIX keys and their associated metadata. Inactive keys are not included. |
+| Fee and limit configurations | `fee_configs[]` contains fee configurations; `limit_config` contains account limit configuration. |
+| Registered webhooks | `webhooks[]` lists the webhooks registered for the account. |
+
+See [Account balances and optional data](#account-data) for the fallback behavior when related lookups fail.
+
+### Transaction history and pagination
+
+[Get Statements](/api-reference/bank-account-and-statements/get-statements) returns transaction ledger entries for the selected account.
+
+| Information | What it includes |
+| --- | --- |
+| Transaction ledger entries | `statements[]` contains transaction and settlement identifiers, `amount`, `memo`, timestamps, and transaction status/type fields. |
+| Credit and debit history | `is_credit` indicates whether an entry is a credit (`true`) or a debit (`false`). The entry’s monetary value is returned in `amount`. |
+| Pagination cursor metadata | The response includes `snapshot_timestamp` and a cursor with `timestamp` and `id` for subsequent requests. |
+| Payment method details | `payment_method` and `payment_variant` identify the payment method and variant as numeric enum values. Use [Objects & Enums](/integration-overview/object-and-enums-references) to interpret them. |
 
 ## Select the account
 
