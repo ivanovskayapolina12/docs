@@ -1,34 +1,101 @@
 ---
 title: "Get Statements"
-description: "Retrieve cursor-based transaction statements for the selected account."
+description: "Retrieve credit and debit entries, filter transaction history, and continue through results with a cursor."
 ---
 
-Retrieve statement entries (transaction ledger) and pagination cursor information for the selected account.
+Retrieve transaction ledger entries for the selected account. Use this operation to inspect credit and debit activity, transaction identifiers, payment methods, and pagination metadata.
 
 ```text
 POST /v3/statements
 ```
 
-#### Authentication & Headers
+<Note>
+  This is a read operation that uses a signed `POST` request. Supply a date range in the JSON body. For the current balance and account configuration, use [Get Bank Account](/api-reference/bank-account-and-statements/get-bank-account).
+</Note>
 
-All requests require signed HMAC-SHA256 HTTP headers:
+## Authentication & headers
 
-- `Content-Type`: `application/json`
-- `X-Client-ID`: Your client identifier.
-- `X-Timestamp`: Current UTC epoch timestamp in milliseconds.
-- `X-Nonce`: Unique request identifier to prevent replay attacks.
-- `X-Signature`: HMAC-SHA256 signature calculated over the canonical header set.
-- `X-Content-Hash`: _(Optional)_ Hash of the request body for inbound API calls.
+Use an `ACCOUNT` credential for its bound account, or a `USER` credential authorized to access the selected account. **Platform credentials are not accepted.**
 
-**Targeting the Account:**
+### Select the target account
 
-- **ACCOUNT Credential:** Bound directly to a specific account. You may omit `X-ISPB` and `X-Account-Number`. If sent, both headers must be present and match the bound account.
-- **USER Credential:** Send both `X-ISPB` and `X-Account-Number` to target the account. Include their exact trimmed values in the canonical header set before calculating `X-Signature`.
-- **Platform Credentials:** Not accepted on this route.
+| Credential | Target headers | Rules |
+| --- | --- | --- |
+| `ACCOUNT` | Optional pair: `X-ISPB` and `X-Account-Number` | Omit both to use the bound account. If supplied, both must be present and match that account. |
+| `USER` | Both `X-ISPB` and `X-Account-Number` are required. | Select an account the credential is permitted to access. |
 
-#### Request
+<Warning>
+  Include the exact trimmed values of any account-target headers in the canonical header set **before** calculating `X-Signature`. Adding or changing them after signing invalidates the signature.
+</Warning>
 
-```shellscript
+### Send the request headers
+
+| Header | Required | Value |
+| --- | --- | --- |
+| `Content-Type` | Yes | `application/json` |
+| `X-Client-ID` | Yes | The client identifier for your credential. |
+| `X-Timestamp` | Yes | Current Unix timestamp in milliseconds. |
+| `X-Nonce` | Yes | A fresh, unique nonce for this request. |
+| `X-Signature` | Yes | HMAC-SHA256 signature generated using the documented canonical request rules. |
+| `X-Content-Hash` | No | Hash of the exact request body. Optional for inbound API calls; if supplied, it must match the bytes sent. |
+
+Follow [Request signing](/api-reference#request-signing) for the canonical path, query, headers, and body rules. Use the matching base URL and credentials described in [Environments](/api-reference/environments).
+
+
+## Request body
+
+### Date range and page size
+
+| Field | Required | JSON type | Rules |
+| --- | --- | --- | --- |
+| `start_date` | Yes | number | Non-zero Unix timestamp in milliseconds. Must be earlier than `end_date`. |
+| `end_date` | Yes | number | Non-zero Unix timestamp in milliseconds. Must be later than `start_date`. |
+| `page_size` | No | number | From `1` through `100` when supplied. |
+
+<Warning>
+  Send dates as JSON numbers in **milliseconds**, not seconds or date strings. An empty body object is not a valid example for this operation because both date fields are required.
+</Warning>
+
+### Optional filters
+
+| Field | JSON type | Purpose |
+| --- | --- | --- |
+| `txn_id` | string | Filter by transaction identifier. |
+| `settlement_id` | string | Filter by settlement identifier. |
+| `funds_type` | number | `1` for CREDIT (inbound flow), `2` for DEBIT (outbound flow). |
+| `transaction_type` | number | Transaction-type filter. If omitted, the value becomes `0` and is forwarded to the downstream service. |
+
+See [Objects & Enums](/integration-overview/object-and-enums-references) for transaction-type definitions. Do not assume that an omitted `transaction_type` disables downstream filtering.
+
+### Pagination inputs
+
+| Field | JSON type | Purpose |
+| --- | --- | --- |
+| `snapshot_timestamp` | number | Optional snapshot timestamp. The response includes a snapshot timestamp for the result set. |
+| `cursor` | object | Optional continuation cursor containing numeric `timestamp` and string `id`. |
+
+See [Continue through results](#continue-through-results) for an example using the response cursor.
+
+## Request
+
+The example requests debit entries with a page size of `20`. Its date range runs from **December 31, 2025, 00:00 UTC** to **January 1, 2026, 00:00 UTC**. Replace the dates with the period you need.
+
+```json
+{
+  "start_date": 1767139200000,
+  "end_date": 1767225600000,
+  "page_size": 20,
+  "funds_type": 2
+}
+```
+
+Set `BASE_URL` and your credential variables, then generate `TIMESTAMP_MS`, `NONCE`, `CONTENT_HASH`, and `SIGNATURE` for the exact request. The commands below include the optional content hash; they do not generate the signature for you.
+
+<Tabs>
+  <Tab title="ACCOUNT credential">
+    Uses the account bound to the credential and omits both account-target headers.
+
+```bash
 curl --request POST "${BASE_URL}/v3/statements" \
   --header "Content-Type: application/json" \
   --header "X-Client-ID: ${CLIENT_ID}" \
@@ -36,10 +103,34 @@ curl --request POST "${BASE_URL}/v3/statements" \
   --header "X-Nonce: ${NONCE}" \
   --header "X-Content-Hash: ${CONTENT_HASH}" \
   --header "X-Signature: ${SIGNATURE}" \
-  --data '{}'
+  --data '{"start_date":1767139200000,"end_date":1767225600000,"page_size":20,"funds_type":2}'
 ```
+  </Tab>
+  <Tab title="USER credential">
+    Set `ISPB` and `ACCOUNT_NUMBER` to a permitted account. Include both headers in the canonical header set before signing.
 
-#### Success Response (`200 OK`)
+```bash
+curl --request POST "${BASE_URL}/v3/statements" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-ISPB: ${ISPB}" \
+  --header "X-Account-Number: ${ACCOUNT_NUMBER}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{"start_date":1767139200000,"end_date":1767225600000,"page_size":20,"funds_type":2}'
+```
+  </Tab>
+</Tabs>
+
+<Tip>
+  If you change dates, filters, or cursor values, recalculate the body hash and signature for the new request. Keep the body bytes unchanged after signing and use a fresh nonce.
+</Tip>
+
+## Success response
+
+A successful API result has outer JSON `code: 200`. The `data` object contains statement entries and pagination metadata. The following example uses illustrative identifiers and values.
 
 ```json
 {
@@ -74,9 +165,99 @@ curl --request POST "${BASE_URL}/v3/statements" \
 }
 ```
 
-#### Statement Schema Key Fields
+### Result structure
 
-- `amount`: Decimal string representing the entry value.
-- `is_credit`: `true` for incoming funds (credit), `false` for outgoing funds (debit).
-- `payment_method` / `payment_variant` / `txn_status` / `txn_type`: Integer enum values representing internal transaction lifecycles and types.
-- `cursor`: Contains `timestamp` and `id` to pass in subsequent requests for pagination.
+| Field inside `data` | JSON type | Description |
+| --- | --- | --- |
+| `statements` | array | Transaction ledger entries for the selected account. |
+| `snapshot_timestamp` | number | Snapshot timestamp returned with the result set. |
+| `cursor` | object | Continuation metadata with numeric `timestamp` and string `id`. |
+
+Results are requested in descending order. This endpoint does not populate a `page` field; use the cursor metadata rather than relying on a page number.
+
+### Statement fields
+
+Each object in `statements[]` can contain the following documented fields.
+
+| Field | JSON type | Description |
+| --- | --- | --- |
+| `txn_id` | string | Transaction identifier. |
+| `settlement_id` | string | Settlement identifier. |
+| `amount` | string | Monetary value of the entry as a decimal string. |
+| `memo` | string | Transaction memo. |
+| `created_at` | number | Transaction creation timestamp. |
+| `is_credit` | boolean | `true` for a credit; `false` for a debit, relative to the selected account. |
+| `payment_method` | number | Payment method enum. |
+| `payment_variant` | number | Payment variant enum. |
+| `txn_status` | number | Transaction status enum. |
+| `txn_type` | number | Transaction type enum. |
+| `parent_txn_id` | string | Parent transaction reference, when present. |
+| `parent_settlement_id` | string | Parent settlement reference, when present. |
+| `payer` | object or null | Payer information when provided. |
+| `payee` | object or null | Payee information when provided. |
+
+<Warning>
+  Keep `amount` as a decimal string or use a fixed-point/arbitrary-precision decimal library. Do not convert monetary values to binary floating-point numbers.
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Credit and debit interpretation" id="credit-and-debit">
+    `is_credit` is determined by comparing the transaction payee document with the selected account document. Interpret the direction relative to that account. In the example, `is_credit: false` identifies a debit entry with an `amount` of `"25.00"`.
+  </Accordion>
+  <Accordion title="Payment methods, statuses, and party information" id="statement-metadata">
+    `payment_method`, `payment_variant`, `txn_status`, and `txn_type` are numeric enums. Use [Objects & Enums](/integration-overview/object-and-enums-references) for their meanings; the outer success code describes the API call, while `txn_status` describes the transaction.
+
+    Party documents can be masked by merchant configuration. Handle the returned `payer` and `payee` values accordingly; both are `null` in the example.
+  </Accordion>
+</AccordionGroup>
+
+## Continue through results
+
+<Steps>
+  <Step title="Request the initial result set">
+    Supply the required date range and any filters. Omit `cursor` for the initial request.
+  </Step>
+  <Step title="Read the continuation metadata">
+    Process `statements[]` and retain the returned `cursor.timestamp`, `cursor.id`, and `snapshot_timestamp`.
+  </Step>
+  <Step title="Build and sign the continuation request">
+    To continue the same query, keep the account, date range, and filters consistent. Supply the returned cursor and snapshot timestamp in the next request body. Sign that new body with a fresh timestamp and nonce.
+  </Step>
+</Steps>
+
+The body below illustrates continuation using the response example above. Use the actual values returned by your request instead of these sample cursor values.
+
+```json
+{
+  "start_date": 1767139200000,
+  "end_date": 1767225600000,
+  "page_size": 20,
+  "funds_type": 2,
+  "snapshot_timestamp": 1767225600000,
+  "cursor": {
+    "timestamp": 1767225600000,
+    "id": "demo-cursor-001"
+  }
+}
+```
+
+## Errors
+
+Check the outer JSON `code` to determine whether the API call succeeded. **HTTP 200 alone does not indicate success.** The following are endpoint-specific API result codes, not HTTP status codes.
+
+| API result code | Meaning on this endpoint | Next check |
+| --- | --- | --- |
+| `4001` | Invalid dates or page size. | Supply non-zero millisecond timestamps with `start_date` earlier than `end_date`; keep `page_size` between `1` and `100`. |
+| `4003008` | Missing account context. | Verify the credential and the required account-target headers. |
+| `501` | Transaction-list RPC failure. | Record the response and follow the Error Catalog guidance for downstream failures. |
+
+The operation can also return mapped upstream errors or fail because of missing or invalid signing headers, an expired timestamp, nonce replay, a content-hash or signature mismatch, or insufficient permission.
+
+<CardGroup cols={2}>
+  <Card title="Error Catalog" icon="circle-exclamation" href="/integration-overview/error-catalog">
+    Interpret shared API result codes and transport errors.
+  </Card>
+  <Card title="Get Bank Account" icon="building-columns" href="/api-reference/bank-account-and-statements/get-bank-account">
+    Retrieve current balances, PIX keys, and account configuration.
+  </Card>
+</CardGroup>
