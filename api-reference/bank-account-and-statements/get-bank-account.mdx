@@ -1,34 +1,61 @@
 ---
 title: "Get Bank Account"
-description: "Retrieve balances, active PIX keys, limits, webhooks, and fees."
+description: "Retrieve an account’s balance breakdown, active PIX keys, limits, webhooks, and fees."
 ---
 
-Retrieve the balance breakdown, active PIX keys, limits, fee configurations, and registered webhooks for the selected account.
+Retrieve the current details and configuration of the selected bank account. Use this operation to read balances, inspect active PIX keys, and retrieve limit, fee, and webhook configuration.
 
 ```text
 POST /v3/bank_account
 ```
 
-#### Authentication & Headers
+<Note>
+  This is a read operation that uses `POST` with an empty JSON object. For individual transaction entries, use [Get Statements](/api-reference/bank-account-and-statements/get-statements).
+</Note>
 
-All requests require signed HMAC-SHA256 HTTP headers:
+## Authentication & headers
 
-- `Content-Type`: `application/json`
-- `X-Client-ID`: Your client identifier.
-- `X-Timestamp`: Current UTC epoch timestamp in milliseconds.
-- `X-Nonce`: Unique request identifier to prevent replay attacks.
-- `X-Signature`: HMAC-SHA256 signature calculated over the canonical header set.
-- `X-Content-Hash`: _(Optional)_ Hash of the request body for inbound API calls.
+Use an `ACCOUNT` credential for its bound account, or a `USER` credential authorized to access the selected account. **Platform credentials are not accepted.**
 
-**Targeting the Account:**
+### Select the target account
 
-- **ACCOUNT Credential:** Bound directly to a specific account. You may omit `X-ISPB` and `X-Account-Number`. If sent, both headers must be present and match the bound account.
-- **USER Credential:** Send both `X-ISPB` and `X-Account-Number` to target the account. Include their exact trimmed values in the canonical header set before calculating `X-Signature`.
-- **Platform Credentials:** Not accepted on this route.
+| Credential | Target headers | Rules |
+| --- | --- | --- |
+| `ACCOUNT` | Optional pair: `X-ISPB` and `X-Account-Number` | Omit both to use the bound account. If supplied, both must be present and match that account. |
+| `USER` | Both `X-ISPB` and `X-Account-Number` are required. | Select an account the credential is permitted to access. |
 
-#### Request
+<Warning>
+  Include the exact trimmed values of any account-target headers in the canonical header set **before** calculating `X-Signature`. Adding or changing them after signing invalidates the signature.
+</Warning>
 
-```shellscript
+### Send the request headers
+
+| Header | Required | Value |
+| --- | --- | --- |
+| `Content-Type` | Yes | `application/json` |
+| `X-Client-ID` | Yes | The client identifier for your credential. |
+| `X-Timestamp` | Yes | Current Unix timestamp in milliseconds. |
+| `X-Nonce` | Yes | A fresh, unique nonce for this request. |
+| `X-Signature` | Yes | HMAC-SHA256 signature generated using the documented canonical request rules. |
+| `X-Content-Hash` | No | Hash of the exact request body. Optional for inbound API calls; if supplied, it must match the bytes sent. |
+
+Follow [Request signing](/api-reference#request-signing) for the canonical path, query, headers, and body rules. Use the matching base URL and credentials described in [Environments](/api-reference/environments).
+
+## Request
+
+Send an empty JSON object. This endpoint defines no request-body fields.
+
+```json
+{}
+```
+
+Set `BASE_URL` and the variables shown below from your integration configuration. Generate `TIMESTAMP_MS`, `NONCE`, `CONTENT_HASH`, and `SIGNATURE` for the exact request before running the command. The examples include the optional content hash and do not generate the signature for you.
+
+<Tabs>
+  <Tab title="ACCOUNT credential">
+    This example uses the credential’s bound account, so it omits both account-target headers.
+
+```bash
 curl --request POST "${BASE_URL}/v3/bank_account" \
   --header "Content-Type: application/json" \
   --header "X-Client-ID: ${CLIENT_ID}" \
@@ -38,8 +65,28 @@ curl --request POST "${BASE_URL}/v3/bank_account" \
   --header "X-Signature: ${SIGNATURE}" \
   --data '{}'
 ```
+  </Tab>
+  <Tab title="USER credential">
+    Set `ISPB` and `ACCOUNT_NUMBER` to the permitted target account. Generate a new signature that includes these headers; do not reuse the signature from the ACCOUNT example.
 
-#### Success Response (`200 OK`)
+```bash
+curl --request POST "${BASE_URL}/v3/bank_account" \
+  --header "Content-Type: application/json" \
+  --header "X-Client-ID: ${CLIENT_ID}" \
+  --header "X-Timestamp: ${TIMESTAMP_MS}" \
+  --header "X-Nonce: ${NONCE}" \
+  --header "X-Content-Hash: ${CONTENT_HASH}" \
+  --header "X-ISPB: ${ISPB}" \
+  --header "X-Account-Number: ${ACCOUNT_NUMBER}" \
+  --header "X-Signature: ${SIGNATURE}" \
+  --data '{}'
+```
+  </Tab>
+</Tabs>
+
+## Success response
+
+A successful API result has outer JSON `code: 200`. The `data` object contains the account details below. Identifiers and values in this example are illustrative.
 
 ```json
 {
@@ -70,8 +117,81 @@ curl --request POST "${BASE_URL}/v3/bank_account" \
 }
 ```
 
-#### Field Notes & Edge Behaviors
+<Warning>
+  Monetary values are **decimal strings**. Use fixed-point decimal arithmetic or an arbitrary-precision decimal library; do not convert them to binary floating-point numbers. A successful result can include fallback values when related lookups fail—see [Partial failures](#partial-failures).
+</Warning>
 
-- **Frozen Balances:** `other_frozen_amount` is `frozen_amount - med_frozen_amount`, clamped at zero.
-- **Partial Failures:** If balance-snapshot retrieval fails internally, the call still returns `200 OK` with balance components defaulted to `"0"` and `currency: "BRL"`. Failures looking up PIX keys or webhooks return `[]`; limit/fee lookup failures return `null`.
-- **Fatal Errors:** Basic account lookup errors remain fatal.
+### Account identifiers and balances
+
+All fields in the following tables are inside `data`.
+
+| Field | JSON type | Description |
+| --- | --- | --- |
+| `account_number` | string | Identifier of the selected account. |
+| `ispb` | string | ISPB associated with the account. Preserve the string representation, including leading zeros. |
+| `currency` | string | Currency of the returned balances. The documented fallback is `"BRL"`. |
+| `balance` | string | Current balance returned for the account. |
+| `available_amount` | string | Available balance component. |
+| `frozen_amount` | string | Total frozen amount. |
+| `med_frozen_amount` | string | Amount frozen for MED. |
+| `other_frozen_amount` | string | Other frozen amount: total frozen minus MED frozen, clamped at zero. |
+
+For the example above, `frozen_amount` and `med_frozen_amount` are both `"20.00"`, so `other_frozen_amount` is `"0"`.
+
+### PIX keys and account configuration
+
+| Field | Contents | Response considerations |
+| --- | --- | --- |
+| `pix_keys[]` | Active PIX keys and their metadata. | Only active keys are returned. A lookup failure returns an empty list. |
+| `limit_config` | Account limit configuration. | Can be `null` if the related lookup fails. |
+| `webhooks[]` | Webhooks registered for the account. | A lookup failure returns an empty list. |
+| `fee_configs[]` | Account fee configurations. | Every fee-configuration field is a string. A lookup failure can return `null`. |
+
+<Accordion title="PIX key fields shown in the example" id="pix-key-fields">
+  | Field | JSON type | Description |
+  | --- | --- | --- |
+  | `pix_key` | string | The PIX key value. |
+  | `pix_key_type` | number | Numeric PIX key type enum. |
+  | `status` | number | Numeric PIX key status enum. |
+  | `created_at` | number | PIX key creation timestamp. |
+
+  PIX-key enums and lifecycle timestamps are JSON numbers. See [Objects & Enums](/integration-overview/object-and-enums-references) for shared definitions.
+</Accordion>
+
+## Partial failures
+
+Related lookups do not all have the same failure behavior. Check the returned values before treating the response as a complete account snapshot.
+
+| Lookup that fails | Documented behavior |
+| --- | --- |
+| Balance snapshot | The operation still succeeds. Balance components default to `"0"` and `currency` to `"BRL"`. |
+| PIX keys | `pix_keys` is an empty list: `[]`. |
+| Webhooks | `webhooks` is an empty list: `[]`. |
+| Limits | `limit_config` can be `null`. |
+| Fees | `fee_configs` can be `null`. |
+| Basic account | The error is fatal to the operation; the request fails. |
+
+<Note>
+  Zero balances, empty lists, or `null` configuration values can therefore reflect a failed related lookup. Do not assume that the HTTP status or outer success code confirms that every component was retrieved.
+</Note>
+
+## Errors
+
+Normal API errors are returned in the JSON envelope. Check the outer `code`; **HTTP 200 alone does not mean success**. See the [Error Catalog](/integration-overview/error-catalog) for transport errors and shared result codes.
+
+| API result code | Endpoint-specific meaning | Next check |
+| --- | --- | --- |
+| `500` | Missing client context. | Verify the client identifier and credential context. |
+| `501` | Account-provider RPC failure. | Record the response and follow the Error Catalog guidance for downstream failures. |
+| `4004010` | Account not found (nil account). | Verify the target account and the credential’s access to it. |
+
+The operation can also return mapped account-provider errors or fail because of missing or invalid signing headers, an expired timestamp, nonce replay, a content-hash or signature mismatch, or insufficient permission.
+
+<CardGroup cols={2}>
+  <Card title="Get Statements" icon="list" href="/api-reference/bank-account-and-statements/get-statements">
+    Retrieve the selected account’s transaction entries and pagination cursor.
+  </Card>
+  <Card title="Bank Account & Statements" icon="building-columns" href="/api-reference/bank-account-and-statements">
+    Review the two operations, account selection, and shared response guidance.
+  </Card>
+</CardGroup>
