@@ -20,8 +20,9 @@ Do not send X-ISPB or X-Account-Number. This user-only management route rejects 
 | Field                                   | Required    | Description                                                                                                       |
 | --------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
 | `reference_id`                          | Yes         | Stable merchant reference; reuse it for technical retries.                                                        |
-| `model`                                 | Yes         | Numeric enum: 1 MOR, 2 VA, or 3 PA.                                                                               |
-| `compliance_mode`, `compliance_payload` | Conditional | Required for VA and PA; forbidden for MOR.                                                                        |
+| `model` | Yes<br />`enum` | `1`: MOR<br />`2`: VA<br />`3`: PA |
+| `compliance_mode` | Conditional <br />`enum`<br /> | `1`: Hosted Link<br />`2` :API Body<br /><br />\* Required for VA and PA |
+| `compliance_payload` | Conditional <br />`String` | \* Required for VA and PA |
 | `return_url`                            | Conditional | Required for Hosted Link; forbidden for MOR.                                                                      |
 | `provider_session_info`                 | Conditional | Provider Session input; forbidden for MOR.                                                                        |
 | `linked_account`                        | Conditional | Required for PA and forbidden for MOR/VA. Must reference an eligible active Master Account or VA under the owner. |
@@ -45,18 +46,38 @@ Every call can fail for missing or invalid signature headers, an expired timesta
 
 ### Example request
 
-```bash
+```bash wrap
 curl --request POST "${BASE_URL}/v3/onboarding/managed_accounts/create" \
   --header "Content-Type: application/json" \
   --header "X-Client-ID: ${CLIENT_ID}" \
   --header "X-Timestamp: ${TIMESTAMP_MS}" \
   --header "X-Nonce: ${NONCE}" \
   --header "X-Signature: ${SIGNATURE}" \
-  --data '{"reference_id":"managed-va-demo-001","model":2,"compliance_mode":1,"compliance_payload":{"document_type":1,"tax_id":"00000000000","legal_name":"Demo Subject"},"return_url":"https://merchant.example.test/managed-return"}'
+  --data '{
+	  "reference_id": "managed-va-demo-001",
+	  "model": 2,
+	  "compliance_mode": 1,
+	  "compliance_payload": {
+	    "document_type": 1,
+	    "tax_id": "00000000000",
+	    "legal_name": "Demo Subject"
+	  },
+	  "return_url": "https://merchant.example.test/managed-return"
+	}'
 ```
 
 ### Example response
 
-```json
-{"code":200,"message":"success","data":{"reference_id":"managed-va-demo-001","model":2,"status":1,"verification_url":"https://verification.example.test/session/managed-demo-001"},"time":1710002000000}
+```json wrap
+{
+  "code": 200,
+  "data": {
+    "reference_id": "managed-va-demo-001",
+    "model": 2,
+    "status": 1,
+    "verification_url": "https://"
+  },
+  "message": "success",
+  "time": 1710002000000
+}
 ```

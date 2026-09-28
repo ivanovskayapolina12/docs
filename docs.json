@@ -34,7 +34,19 @@
             "pages": [
               "api-reference/bank-account-and-statements",
               "api-reference/bank-account-and-statements/get-bank-account",
-              "api-reference/bank-account-and-statements/get-statements"
+              "api-reference/bank-account-and-statements/get-statements",
+              {
+                "group": "Manage Multiple Accounts",
+                "pages": [
+                  "api-reference/managed-accounts",
+                  "api-reference/managed-accounts/create-managed-account",
+                  "api-reference/managed-accounts/get-managed-account",
+                  "api-reference/managed-accounts/list-managed-accounts",
+                  "api-reference/managed-accounts/update-managed-account",
+                  "api-reference/managed-accounts/get-managed-account-credential",
+                  "api-reference/managed-accounts/rotate-managed-account-credentials"
+                ]
+              }
             ]
           },
           {
@@ -117,18 +129,6 @@
               "api-reference/master-accounts/update-master-account"
             ],
             "hidden": true
-          },
-          {
-            "group": "Managed Accounts",
-            "pages": [
-              "api-reference/managed-accounts",
-              "api-reference/managed-accounts/create-managed-account",
-              "api-reference/managed-accounts/get-managed-account",
-              "api-reference/managed-accounts/list-managed-accounts",
-              "api-reference/managed-accounts/update-managed-account",
-              "api-reference/managed-accounts/get-managed-account-credential",
-              "api-reference/managed-accounts/rotate-managed-account-credentials"
-            ]
           }
         ]
       },

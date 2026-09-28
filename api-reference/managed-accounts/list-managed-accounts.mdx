@@ -20,7 +20,7 @@ Do not send X-ISPB or X-Account-Number. This user-only management route rejects 
 | Field            | Required | Description                                                                                                      |
 | ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
 | `model`          | No       | Numeric model filter: 1 MOR, 2 VA, or 3 PA.                                                                      |
-| `status`         | No       | Numeric status filter: 1 PENDING, 2 ACTIVE, 3 FROZEN, 4 CLOSED, 5 REJECTED, 6 EXPIRED, or 7 PENDING\_SUBMISSION. |
+| `status` | No<br />`enum` | Values<br />`1` Pending<br />`2` Active <br />`3` Frozen<br />`4` Closed<br />`5` Rejected<br />`6` Expired<br />`7` Pending Submission. |
 | `tax_id`         | No       | Tax ID filter.                                                                                                   |
 | `page.page`      | No       | Page number starting at 1.                                                                                       |
 | `page.page_size` | No       | Defaults to 20 and is capped at 100.                                                                             |
