@@ -115,7 +115,8 @@
               "api-reference/master-accounts/get-master-account",
               "api-reference/master-accounts/list-master-accounts",
               "api-reference/master-accounts/update-master-account"
-            ]
+            ],
+            "hidden": true
           },
           {
             "group": "Managed Accounts",

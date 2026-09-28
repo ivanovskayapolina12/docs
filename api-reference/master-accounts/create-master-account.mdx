@@ -1,6 +1,6 @@
 ---
 title: "Create Master Account"
-description: "Start master-account onboarding."
+description: "Start Sub-account onboarding."
 ---
 
 Create a Master Account onboarding record and start the selected compliance flow.
@@ -50,7 +50,7 @@ Every call can fail for missing or invalid signature headers, an expired timesta
 
 ### Example request
 
-```bash
+```bash wrap
 curl --request POST "${BASE_URL}/v3/onboarding/master_accounts/create" \
   --header "Content-Type: application/json" \
   --header "X-Client-ID: ${CLIENT_ID}" \
@@ -62,6 +62,6 @@ curl --request POST "${BASE_URL}/v3/onboarding/master_accounts/create" \
 
 ### Example response
 
-```json
+```json wrap
 {"code":200,"message":"success","data":{"reference_id":"master-ref-demo-001","status":1,"compliance_session_id":"cmp_demo_001","verification_url":"https://verification.example.test/session/cmp_demo_001"},"time":1710001000000}
 ```
