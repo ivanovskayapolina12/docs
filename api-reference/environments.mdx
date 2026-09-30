@@ -1,5 +1,5 @@
 ---
-title: "Environments"
+title: "Environments & Credentials"
 description: "Choose the correct API base URL, pair it with your credentials, and configure your client."
 ---
 
@@ -9,7 +9,7 @@ Connect to the API environment assigned to your integration. Keep its base URL a
 
 ### Live API
 
-Use this base URL for live traffic:
+Use this base URL for production:
 
 ```text
 https://ebanking-openapi.pagsmile.com.br
@@ -92,6 +92,27 @@ Confirm that:
 - The outgoing request uses the exact documented path, including `/v3`.
 - The signature matches the path, query, headers, and raw body actually transmitted.
 - Your nonce store, logs, and secret configuration are separated by environment.
+
+## Choose the right credential
+
+Your credential determines which operations you can call and how you select an account.
+
+| Credential | Use it for | Account-target headers |
+| :-- | :-- | :-- |
+| **ACCOUNT** | Operations on the single account bound to the credential. | Optional. If supplied, both headers must match the bound account. |
+| **USER** | User-owned operations and permitted account-level operations. | Required for account-level operations. Not accepted by user-owned managed-account operations. |
+| **PLATFORM** | Platform-level master-account operations. | Not accepted. PLATFORM credentials cannot call account-level endpoints. |
+
+<Accordion title="Account-targeting rules">
+  The account-target headers are `X-ISPB` and `X-Account-Number`.
+
+  - Always send them together with non-empty values when explicit targeting is required or allowed.
+  - The selected account must be active, belong to the authenticated user, and have a valid account hierarchy.
+  - When the headers are present, include both exact trimmed values in the canonical headers **before** calculating the signature.
+  - Do not add account-target headers to platform operations or user-owned managed-account operations.
+
+  Check each endpoint's **Authentication and target** section before calling it.
+</Accordion>
 
 ## Connection questions
 

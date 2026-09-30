@@ -13,15 +13,7 @@
         "group": "Getting started",
         "pages": [
           "index",
-          "getting-started",
-          {
-            "group": "Integration Overview",
-            "pages": [
-              "integration-overview",
-              "integration-overview/error-catalog",
-              "integration-overview/object-and-enums-references"
-            ]
-          }
+          "getting-started"
         ]
       },
       {
@@ -29,6 +21,9 @@
         "pages": [
           "api-reference",
           "api-reference/environments",
+          "integration-overview",
+          "integration-overview/error-catalog",
+          "integration-overview/object-and-enums-references",
           {
             "group": "Bank Account & Statements",
             "pages": [

@@ -6,12 +6,17 @@ description: "Understand API result codes, diagnose failures, and choose the rig
 Use this catalog to interpret an Open API v3 response, identify the cause of a failure, and decide what to do next. Start with the outer result code, then check the rules for the endpoint you called.
 
 <Warning>
-**HTTP 200 does not guarantee success.** Normal API results, including errors, use HTTP 200. The outer JSON `code` is authoritative: `200` means success; every other value means failure.
+  **HTTP 200 does not guarantee success.** Normal API results, including errors, use HTTP 200. The outer JSON `code` is authoritative: `200` means success; every other value means failure.
 </Warning>
 
 <CardGroup cols={2}>
-  <Card title="Find a result code" icon="magnifying-glass" href="#business-codes">Browse codes by category and see the recommended next check.</Card>
-  <Card title="Decide whether to retry" icon="rotate" href="#retry-guidance">Distinguish a correctable request from an uncertain operation outcome.</Card>
+  <Card title="Find a result code" icon="magnifying-glass" href="#business-codes">
+    Browse codes by category and see the recommended next check.
+  </Card>
+
+  <Card title="Decide whether to retry" icon="rotate" href="#retry-guidance">
+    Distinguish a correctable request from an uncertain operation outcome.
+  </Card>
 </CardGroup>
 
 ## Read the response
@@ -19,6 +24,7 @@ Use this catalog to interpret an Open API v3 response, identify the cause of a f
 Normal processing returns a JSON envelope. These examples illustrate the structure; error message wording can vary.
 
 <CodeGroup>
+
 ```json Success
 {
   "code": 200,
@@ -36,14 +42,39 @@ Normal processing returns a JSON envelope. These examples illustrate the structu
   "time": 1767225600000
 }
 ```
+
 </CodeGroup>
 
-| Field | How to use it |
-| --- | --- |
-| `code` | Use the outer numeric code to determine the business result. |
-| `message` | Treat as display text. It may be localized or replaced by a normalized upstream public message; never use it for program logic. |
-| `data` | Contains the endpoint result on success and is `null` on an enveloped failure. |
-| `time` | Retain the returned value when recording the response for troubleshooting. |
+<table>
+  <colgroup>
+    <col width="100" />
+    <col width="844" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>How to use it</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`code`</td>
+      <td>Use the outer numeric code to determine the business result.</td>
+    </tr>
+    <tr>
+      <td>`message`</td>
+      <td>Treat as display text. It may be localized or replaced by a normalized upstream public message; never use it for program logic.</td>
+    </tr>
+    <tr>
+      <td>`data`</td>
+      <td>Contains the endpoint result on success and is `null` on an enveloped failure.</td>
+    </tr>
+    <tr>
+      <td>`time`</td>
+      <td>Retain the returned value when recording the response for troubleshooting.</td>
+    </tr>
+  </tbody>
+</table>
 
 A legacy error object nested inside successful `data` does not change the outer result. For transaction state, read the endpoint-specific status fields separately.
 
@@ -57,7 +88,7 @@ A legacy error object nested inside successful `data` does not change the outer 
 | Plain-text failure, normally HTTP 500 | An unhandled server failure can bypass the envelope. | Record the transport failure and assess the operation outcome before retrying. |
 
 <Note>
-A JSON business code such as `401`, `500`, or `504` is not the HTTP status. For example, outer `code: 504` describes unavailable compliance verification and is delivered in an HTTP 200 envelope.
+  A JSON business code such as `401`, `500`, or `504` is not the HTTP status. For example, outer `code: 504` describes unavailable compliance verification and is delivered in an HTTP 200 envelope.
 </Note>
 
 ## Business codes
@@ -141,7 +172,7 @@ Use your browser’s Find command (`⌘F` on Mac or `Ctrl+F` on Windows) to loca
 | `4004029` | Too many requests | Reduce request frequency. Apply the retry guidance below before resubmitting. |
 | `500` | Safe system-error fallback | Record the failure and assess the operation outcome before retrying. Escalate persistent failures. |
 | `501 / 502 / 503` | Service unavailable / bank busy / temporarily unsupported | Check service availability with your integration representative and follow the retry guidance below. |
-| `504` | Compliance verification temporarily unavailable; retry with the same request\_id | For a technical retry of compliance verification, keep the same request_id and generate fresh signing metadata. |
+| `504` | Compliance verification temporarily unavailable; retry with the same request_id | For a technical retry of compliance verification, keep the same request_id and generate fresh signing metadata. |
 
 See [Integration Overview](/integration-overview#sign-your-request) for signing and account-targeting requirements. Only the documented business codes form the client contract. Do not branch on internal enum names or raw provider diagnostics.
 
@@ -169,11 +200,9 @@ Before retrying, identify whether you need to correct the request, resolve an ac
 </Steps>
 
 <Accordion title="Rate limiting and temporary service failures">
+  For `4004029`, reduce request frequency. For service failures, confirm whether the operation can be retried before doing so. As a client-design recommendation, use bounded retries with increasing delays and jitter for operations you have established are safe to repeat. Stop after a defined limit and escalate persistent failures.
 
-For `4004029`, reduce request frequency. For service failures, confirm whether the operation can be retried before doing so. As a client-design recommendation, use bounded retries with increasing delays and jitter for operations you have established are safe to repeat. Stop after a defined limit and escalate persistent failures.
-
-This catalog does not define a universal retry interval, attempt count, or guaranteed recovery time. A service-error code alone does not establish that a payment was never executed.
-
+  This catalog does not define a universal retry interval, attempt count, or guaranteed recovery time. A service-error code alone does not establish that a payment was never executed.
 </Accordion>
 
 ## Implement consistent client handling
@@ -199,6 +228,11 @@ If the cause is unclear or the problem persists, contact your Pagsmile integrati
 Remove API secrets, passwords, one-time credentials, and unnecessary customer information before sharing logs or examples.
 
 <CardGroup cols={2}>
-  <Card title="Review request signing" icon="key" href="/integration-overview#sign-your-request">Check canonicalization, headers, timestamps, and account targeting.</Card>
-  <Card title="Check endpoint behavior" icon="book-open" href="/api-reference">Find validation rules, status fields, and operation-specific retry constraints.</Card>
+  <Card title="Review request signing" icon="key" href="/integration-overview#sign-your-request">
+    Check canonicalization, headers, timestamps, and account targeting.
+  </Card>
+
+  <Card title="Check endpoint behavior" icon="book-open" href="/api-reference">
+    Find validation rules, status fields, and operation-specific retry constraints.
+  </Card>
 </CardGroup>

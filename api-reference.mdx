@@ -5,19 +5,26 @@ description: "Find the right Open API v3 endpoint and understand the rules for e
 
 Build your integration with Pagsmile Open API v3. Choose an operation below to work with accounts, PIX and TED transfers, refunds, QR codes, onboarding, and webhook subscriptions.
 
-Each endpoint documents its request, credential requirements, response, and validation rules. This reference covers 40 operations; availability and account access depend on the endpoint and your credential scope.
-
 ## Before your first request
 
 <Steps>
-  <Step title="Confirm your environment">
-    Use the base URL and matching credentials supplied for your integration. See [Environments](/api-reference/environments) for client configuration.
+  <Step title="Make sure you have successfully onboarded on our system">
+    Complete your [account registration and activation](/getting-started), then check your account type to see which features are available to you.
+  </Step>
+  <Step title="Choose your environment and the right credential">
+    Use the base URL and matching credentials supplied for your integration. 
+
+    See [Environments](/api-reference/environments)
   </Step>
   <Step title="Check access and sign the request">
-    Identify your credential owner, check the endpoint's account-target rules, and generate the HMAC-SHA256 signature. Follow the [Integration Overview](/integration-overview#sign-your-request), or use the [signing reference below](#request-signing).
+    Identify your credential owner, check the endpoint's account-target rules, and generate the HMAC-SHA256 signature. 
+
+    See [Sign your Request](/integration-overview) 
   </Step>
   <Step title="Read the result in context">
-    Check the outer API result code, then interpret the returned operation status. Use [Error Catalog](/integration-overview/error-catalog) for failures and [Object & Enums References](/integration-overview/object-and-enums-references) for shared fields and values.
+    Check the outer API result code, then interpret the returned operation status. 
+
+    See [Error Catalog](/integration-overview/error-catalog) and [Object & Enums References](/integration-overview/object-and-enums-references)
   </Step>
 </Steps>
 
