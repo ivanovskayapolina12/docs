@@ -21,7 +21,6 @@ Do not send X-ISPB or X-Account-Number with a platform or user credential. An ac
 | ----------------- | ----------- | ------------------------------------------------------ |
 | `event_type`      | No          | Event filter. Omit it to list the allowed owner scope. |
 | `account_number`  | Conditional | Required or forbidden by the owner/event policy.       |
-| `subscription_id` | No          | **Currently ignored.** This value does not filter the results. Omit it from List requests. |
 
 ### Success data
 
@@ -54,4 +53,3 @@ curl --request POST "${BASE_URL}/v3/webhooks/list" \
 ```json
 {"code":200,"message":"success","data":{"webhooks":[{"webhook_id":"wh_demo_002","event_type":"VA_ACCOUNT_KYB","callback_url":"https://webhook.example.test/kyb","status":1}]},"time":1710000400000}
 ```
-
