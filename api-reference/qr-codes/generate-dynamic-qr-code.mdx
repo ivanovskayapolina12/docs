@@ -27,7 +27,6 @@ The curl example below uses an ACCOUNT credential bound to the operated account,
 | `memo`, `city`                    | No          | string  | Passed downstream.                                                                           |
 | `payer_document_id`, `payer_name` | Conditional | string  | Supply both or neither. Document length must be 11 or 14.                                    |
 | `payer_verify`                    | No          | boolean | Defaults false. Payer data is forwarded only when true and both payer fields are present.    |
-| `reuseable`                       | No          | string  | **Currently ignored.** This value is not forwarded and does not affect the result. Omit it from requests. |
 
 ### Success data
 
@@ -64,4 +63,3 @@ curl --request POST "${BASE_URL}/v3/qr_code/generate/dynamic" \
 ```json
 {"code":200,"message":"success","data":{"payload_base64":"fictional-base64-payload","qr_code_id":"qr_demo_dynamic_001","merchant_order_id":"260831-qr-dynamic-demo-001"},"time":1767225600000}
 ```
-
