@@ -5,8 +5,6 @@ description: "Connect to Open API v3, sign your first request, and handle respon
 
 A signature proves that the request was created using your API secret and has not changed since it was signed. Calculate it from the same method, path, query, headers, and raw body that you send.
 
-## Sign your request
-
 <Steps>
   <Step title="Prepare the body and headers">
     Serialize the JSON body once and retain its exact raw bytes. Generate a fresh nonce for each call and a Unix timestamp in milliseconds.
