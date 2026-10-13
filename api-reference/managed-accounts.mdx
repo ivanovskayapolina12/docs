@@ -18,7 +18,6 @@ Note: All accounts are managed by and are the sole responsibility of the Main Us
 - List — `POST /v3/onboarding/managed_accounts/list`
 - Update — `POST /v3/onboarding/managed_accounts/update`
 - Get credential — `POST /v3/onboarding/managed_accounts/credentials/get`
-- Rotate credentials — `POST /v3/onboarding/managed_accounts/credentials/rotate`
 
 ## NOTE
 
@@ -28,7 +27,7 @@ Every operation requires a user-scoped owner credential. The selected account mu
 
 ### Credential behavior
 
-Credential retrieval is available only for an eligible active MOR or VA. A newly provisioned secret is returned in full once and is masked on later reads. Credential rotation is present in the HTTP contract but the current service always returns the unsupported-operation error; it is not an available production capability.
+Credential retrieval is available only for an eligible active MOR or VA. A newly provisioned secret is returned in full once and is masked on later reads.
 
 ### Models and state
 
