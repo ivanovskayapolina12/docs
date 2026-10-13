@@ -29,7 +29,16 @@ The curl example below uses an ACCOUNT credential bound to the operated account,
 
 ### Behavior and validation
 
-The decoded QR must be ACTIVE. The reference is account-bound and cached for five minutes. `expires` is passed through from the decoder; this layer does not establish its unit.
+The decoded QR must be ACTIVE. The confirmation reference is account-bound and cached for five minutes.
+
+| Value | Meaning in this operation |
+| --- | --- |
+| `ref_id` | Temporary reference for the [confirmation step](/api-reference/transfers/confirm-pix-transfer-by-qr-code), cached for five minutes. |
+| `expires` | Integer passed through from the QR decoder. This endpoint does not document a stable unit or whether it is a duration, remaining lifetime, or absolute time. |
+
+<Warning>
+  Do not interpret the example `expires: 300` as a guaranteed 300-second lifetime. Do not use this field to calculate a client-side expiry deadline without a confirmed decoder contract. The five-minute reference cache is separate from QR validity. The seconds-based `expires` input for [Generate Dynamic QR Code](/api-reference/qr-codes/generate-dynamic-qr-code) does not define this response field.
+</Warning>
 
 ### Errors
 
@@ -75,3 +84,4 @@ curl --request POST "${BASE_URL}/v3/transfers/pix/qr-code-initiate" \
   "time": 1767225600000
 }
 ```
+

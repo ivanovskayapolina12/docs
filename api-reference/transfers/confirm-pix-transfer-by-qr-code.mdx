@@ -24,7 +24,7 @@ The curl example below uses an ACCOUNT credential bound to the operated account,
 | `ref_id`            | Yes      | string | Must exist in the five-minute QR cache and belong to this account.             |
 | `merchant_order_id` | Yes      | string | Starts with current UTC YYMMDD using the ±1-hour allowance.                    |
 | `amount`            | Yes      | string | Positive decimal with at most two places. A fixed QR amount cannot be changed. |
-| `currency`          | No       | string | Accepted but ignored; the service sends BRL.                                   |
+| `currency`          | No       | string | Currently ignored; the transfer uses BRL regardless of this value.                                   |
 | `memo`              | No       | string | Forwarded to processing.                                                       |
 
 ### Success data
@@ -57,7 +57,7 @@ curl --request POST "${BASE_URL}/v3/transfers/pix/qr-code-confirm" \
   --header "X-Nonce: ${NONCE}" \
   --header "X-Content-Hash: ${CONTENT_HASH}" \
   --header "X-Signature: ${SIGNATURE}" \
-  --data '{"ref_id":"66666666-7777-4888-8999-aaaaaaaaaaaa","merchant_order_id":"<CURRENT_UTC_YYMMDD>-demo-qr-001","amount":"12.34","currency":"USD","memo":"Demo QR payment"}'
+  --data '{"ref_id":"66666666-7777-4888-8999-aaaaaaaaaaaa","merchant_order_id":"<CURRENT_UTC_YYMMDD>-demo-qr-001","amount":"12.34","currency":"BRL","memo":"Demo QR payment"}'
 ```
 
 ### Example response
@@ -74,3 +74,4 @@ curl --request POST "${BASE_URL}/v3/transfers/pix/qr-code-confirm" \
   "time": 1767225600000
 }
 ```
+
