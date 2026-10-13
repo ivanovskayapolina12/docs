@@ -5,7 +5,13 @@ description: "Receive MED case and infraction lifecycle events."
 
 MED processing webhooks report case and infraction lifecycle changes through a common versioned envelope.
 
-Receiving these events requires an active `MED_PROCESSING` subscription for the intended owner. `MED_PROCESSING` is not one of the numeric values currently accepted by `/v3/webhooks`.
+Receiving these events requires an active `MED_PROCESSING` subscription for the intended owner.
+
+<Warning>
+  The ordinary [Create Webhook](/api-reference/webhook-management/create-webhook) endpoint does not accept `MED_PROCESSING`. The event names below describe delivered MED payloads; they are not additional values for the ordinary subscription API. Confirm how your MED subscription is provisioned before relying on event delivery.
+</Warning>
+
+See [Signature Verification](/webhooks/signature-verification) and [Delivery and Retries](/webhooks/delivery-and-retries) when implementing the receiver.
 
 ### Subscription scopes
 
@@ -176,3 +182,4 @@ All MED amount fields are decimal strings. MED timestamps are JSON numbers conta
 * Do not derive business meaning by parsing `event_id`.
 
 See Delivery and Retries for acknowledgement and retry behavior.
+
