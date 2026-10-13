@@ -116,7 +116,7 @@ Send both headers together with non-empty values on permitted routes. A request 
 
 ### Request signing
 
-Every request is signed with **HMAC-SHA256**. Prepare the headers and signature from the exact request you will transmit.
+Every request is signed with **HMAC-SHA256**. Use [Sign your Request](/integration-overview#sign-your-request) as the canonical signing specification. The summary below links to those rules; prepare the signature from the exact request you will transmit.
 
 <Steps>
   <Step title="Prepare the request headers">
@@ -136,7 +136,7 @@ Every request is signed with **HMAC-SHA256**. Prepare the headers and signature 
 
 <span id="stringtosign" />
 
-Join the following values with a line feed (`\n`) in this order:
+Join the following values with a line feed (`\n`) in this order. Keep an empty query as a blank line and do not append a trailing line feed:
 
 1. Uppercase HTTP method
 2. Request path
@@ -154,7 +154,7 @@ Expand each rule below when implementing the signature. The canonical values mus
 <AccordionGroup>
   <Accordion title="Canonical query" id="canonical-query" icon="link" description="Sort and escape the query parameters.">
 
-Parse all query parameters, sort keys lexically, apply URL query escaping to every key and value, and join pairs as `key=value&key2=value2`.
+Follow the [canonical query rules](/integration-overview#sign-your-request): sort parameter names lexically, preserve the original order of values for repeated names, and encode names and values using Go `url.QueryEscape` semantics. Join pairs with `&`.
 
   </Accordion>
   <Accordion title="Canonical headers" id="canonical-headers" icon="list" description="Select, trim, and sort the headers included in the signature.">
@@ -193,3 +193,4 @@ Follow each endpoint’s **Authentication and target** section for the allowed c
 <Tip>
 For a walkthrough, open [Sign your request](/integration-overview#sign-your-request). If a call fails, use the [authentication and permission codes](/integration-overview/error-catalog#authentication-and-permissions) to choose the next check.
 </Tip>
+
