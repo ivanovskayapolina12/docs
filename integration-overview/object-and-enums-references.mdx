@@ -3,7 +3,7 @@ title: "Object & Enums References"
 description: "Understand shared objects, JSON types, and the exact enum values used by Open API v3."
 ---
 
-Use this reference when building request payloads or interpreting API responses. It brings together shared object shapes and enum values across the documented Open API v3 routes. For required fields, validation, and the fields returned by a particular operation, follow that endpoint's reference.
+Use this reference when building request payloads or interpreting API responses. It brings together shared object shapes and enum values across the 40 documented Open API v3 routes. For required fields, validation, and the fields returned by a particular operation, follow that endpoint's reference.
 
 <CardGroup cols={2}>
   <Card title="Handle JSON correctly" icon="code" href="#json-types-and-field-presence">
@@ -24,17 +24,17 @@ Use this reference when building request payloads or interpreting API responses.
 
 | Data | JSON representation | Integration guidance |
 | --- | --- | --- |
-| REST numeric enum fields | Number, such as `2` | Use the numeric value from the relevant enum below. Check the [string exceptions](#string-exceptions) before sharing a model across endpoints. |
+| Enum fields | Number, such as `2` | Use the numeric value from the relevant enum below. Check the [string exceptions](#string-exceptions) before sharing a model across endpoints. |
 | Amounts, fees, balances, frozen amounts, limits, and MED amounts | Decimal string, such as `"25.00"` | Preserve decimal precision and use decimal arithmetic for calculations. |
-| REST numeric timestamps | Number | Follow the endpoint for the time unit. Do not apply this representation to transaction webhooks; see [Webhook payload types](#webhook-payload-types). |
+| Integer timestamps | Number | Explicit onboarding, webhook, and MED lifecycle timestamps use Unix milliseconds. For other integer time fields, preserve the value unless the endpoint specifies the unit. |
 | Optional request fields | Omitted or explicitly supplied | Omitting a field is different from sending `0`, `false`, or `""`. Follow the endpoint's rules for each field. |
 | Unpopulated generated fields | `0`, `""`, `false`, `null`, or `[]` | A declared field may retain a generated zero value when the response mapper does not populate it. |
 
 <Note>
-The numeric enum rules above describe the REST fields identified as numeric in their endpoint references. Transaction webhooks use enum strings and decimal strings for `int64` timestamps. Keep REST response models and webhook payload models separate; do not infer JSON types solely from Proto definitions.
+Enums are serialized as native JSON numbers. The service uses Sonic to serialize generated Go structs, rather than protobuf JSON; do not assume protobuf JSON encoding rules apply.
 </Note>
 
-For REST requests, unknown JSON members are not currently rejected in strict mode. Send only documented fields and do not depend on this acceptance behavior.
+Unknown JSON members are not currently rejected in strict mode. Send only documented fields and do not depend on this acceptance behavior.
 
 <Warning>
 A missing or `null` object does not prove that the field will always be absent. Likewise, a zero or empty value is not enough to infer a business outcome. Interpret it in the context of the endpoint and the relevant status definition.
@@ -60,7 +60,7 @@ Here, `txn_status: 2` means `COMPLETED`, and `source_type: 2` means `API`. Amoun
 
 ## Shared objects
 
-These summaries describe REST models, not a guarantee that every listed field is populated in every response. For callbacks, follow the [webhook payload types](#webhook-payload-types) below. Use the linked endpoint for operation-specific behavior.
+These summaries describe shared models, not a guarantee that every listed field is populated in every response. Use the linked endpoint for operation-specific behavior.
 
 | Object | Shared fields and representation | Related endpoint |
 | --- | --- | --- |
@@ -414,18 +414,8 @@ Some fields intentionally use strings even though related fields use numeric enu
 
 | Context | JSON type | Values |
 | --- | --- | --- |
-| REST request/compliance document-type fields and REST party document types | Number | See [Document type](#document-type). |
+| Request/compliance document-type fields and party document types | Number | See [Document type](#document-type). |
 | `MasterAccountInfo.document_type` and `ManagedAccountInfo.document_type` | String | `"CPF"` or `"CNPJ"` |
-
-### Webhook payload types
-
-| Payload | Enum or status representation | Timestamp representation | Reference |
-| --- | --- | --- | --- |
-| Transaction webhooks | JSON strings, such as `"TXN_STATUS_COMPLETED"`; party document and account types are also enum strings. | `int64` timestamps are decimal JSON strings, such as `"1710000000000"`. | [Serialization rules](/webhooks/transaction-webhooks#serialization-rules) |
-| KYB webhooks | `status` is a string, such as `"APPROVED"`, without the `COMPLIANCE_STATUS_` prefix. | `occurred_at` is a JSON number in Unix milliseconds. | [KYB payload](/webhooks/kyb-webhooks#payload) |
-| MED processing webhooks | Named strings, such as `"AWAITING_ANALYSIS"` for a case status. | MED timestamps are JSON numbers in Unix milliseconds. | [MED processing webhooks](/webhooks/med-processing-webhooks) |
-
-The timestamp unit and JSON type are separate properties: a millisecond timestamp can be represented as a number or a string. Follow the rules for the specific payload. Transaction webhooks also omit unset and default-valued fields; do not apply REST zero-value assumptions to them.
 
 ### Webhook event types
 
@@ -452,7 +442,7 @@ For example, [Create Webhook](/api-reference/webhook-management/create-webhook) 
 
 ## Timestamp and duration checklist
 
-- Read explicit onboarding, webhook, and MED lifecycle timestamps as **Unix milliseconds**, while preserving the JSON type defined for that payload. Transaction webhook `int64` timestamps are strings; KYB `occurred_at` and MED timestamps are numbers.
+- Read explicit onboarding, webhook, and MED lifecycle timestamps as **Unix milliseconds**.
 - Keep other integer time fields unchanged unless the endpoint specifies their unit.
 - Treat dynamic QR `expires` as a **duration in seconds**, not an epoch timestamp. It defaults to `7200` seconds. See [Generate Dynamic QR Code](/api-reference/qr-codes/generate-dynamic-qr-code).
 
@@ -464,4 +454,3 @@ For example, [Create Webhook](/api-reference/webhook-management/create-webhook) 
     Interpret the outer result code and choose the next troubleshooting step.
   </Card>
 </CardGroup>
-
