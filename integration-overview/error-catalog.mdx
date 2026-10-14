@@ -136,8 +136,12 @@ Use your browser’s Find command (`⌘F` on Mac or `Ctrl+F` on Windows) to loca
 | --- | --- | --- |
 | `4001092` | KYC/KYB status invalid or incomplete | Check the account verification status and complete the required verification steps. |
 | `4002003` | Information or application already registered | Find the existing registration and continue its documented workflow. |
-| `4004004` | Resource not found | Check the resource identifier and its account scope. |
+| `4004004` | Resource not found; on Create Managed Account, account creation fee configuration is missing | Check the endpoint context. For managed-account creation, ask your administrator or support to configure the fee. Otherwise check the resource identifier and account scope. |
 | `4004008 / 4004010` | Account inactive / account not found | Check that the selected account exists and is active. |
+
+<Note>
+  On [Create Managed Account](/api-reference/managed-accounts/create-managed-account#account-creation-fee-errors), `4001999` means that the creation fee could not be charged because of insufficient funds. Fund the Master Account, then retry with the same `reference_id`.
+</Note>
 
 ### PIX keys and QR codes
 
