@@ -15,6 +15,20 @@ A user-scoped credential is required. The owner must have exactly one active Mas
 
 Do not send X-ISPB or X-Account-Number. This user-only management route rejects account-targeting headers. For a PA, linked\_account is a JSON request-body field, not an account-targeting header.
 
+## Before you create an account
+
+<Steps>
+  <Step title="Confirm the account creation fee">
+    Ask your administrator to configure the account creation fee before submitting the request. If the configuration is missing, the API returns `4004004`.
+  </Step>
+  <Step title="Fund the Master Account">
+    Ensure the Master Account has enough available funds to pay the creation fee. If the fee cannot be charged because of insufficient funds, the API returns `4001999`. Add funds and retry with the **same `reference_id`**.
+  </Step>
+  <Step title="Choose the account model">
+    MOR reuses approved Master Account compliance. VA supports CNPJ. PA supports CPF for personal verification (KYC) and CNPJ for business verification (KYB).
+  </Step>
+</Steps>
+
 ### Request body
 
 | Field                                   | Required    | Description                                                                                                       |
@@ -22,21 +36,51 @@ Do not send X-ISPB or X-Account-Number. This user-only management route rejects 
 | `reference_id`                          | Yes         | Stable merchant reference; reuse it for technical retries.                                                        |
 | `model` | Yes<br />`enum` | `1`: MOR<br />`2`: VA<br />`3`: PA |
 | `compliance_mode` | Conditional <br />`enum`<br /> | `1`: Hosted Link<br />`2` :API Body<br /><br />\* Required for VA and PA |
-| `compliance_payload` | Conditional <br />`String` | \* Required for VA and PA |
+| `compliance_payload` | Conditional — object | Required for VA and PA. Send a nested JSON object, not a JSON-encoded string. See [Compliance payload](#compliance-payload). |
 | `return_url`                            | Conditional | Required for Hosted Link; forbidden for MOR.                                                                      |
 | `provider_session_info`                 | Conditional | Provider Session input; forbidden for MOR.                                                                        |
 | `linked_account`                        | Conditional | Required for PA and forbidden for MOR/VA. Must reference an eligible active Master Account or VA under the owner. |
+| `trading_name` | See model examples | Public-facing trading name; shown in the MOR and VA examples below. |
 | `notification_email`                    | No          | Notification email metadata.                                                                                      |
+
+### Compliance payload
+
+The confirmed identity fields are:
+
+| Field | JSON type | Format |
+| --- | --- | --- |
+| `document_type` | number (int32) | `1` for CPF; `2` for CNPJ. VA accepts CNPJ only; PA supports CPF and CNPJ. |
+| `tax_id` | string | Normalized CPF/CNPJ without punctuation or spaces. CPF contains 11 digits. CNPJ contains 14 uppercase alphanumeric characters, with digits in the last two positions. |
+| `legal_name` | string | Required legal business name or full personal name. |
+
+<Note>
+  The examples below use `compliance_mode: 1` (Hosted Link). They establish the identity object format; they are not a complete KYC/KYB submission schema for `compliance_mode: 2` (API Body).
+</Note>
+
+### Linked account for PA
+
+Send `linked_account` as an object containing `ispb` and `account_number`, both strings. It must identify an eligible active Master Account or VA under the owner. Preserve leading zeros. This object is required for PA and forbidden for MOR and VA.
 
 ### Success data
 
-`reference_id`, `model`, current `status`, and an optional `verification_url`.
+The response contains `reference_id`, `model`, current `status`, and `verification_url`. The supplied MOR example returns `status: 2` (Active) and an empty verification URL. The Hosted Link VA and PA examples return `status: 1` (Pending) and a verification URL; direct the applicant to that URL to complete verification.
+
+The confirmed examples also include `error: null` and `result: null`. Do not infer a populated schema for these fields from these examples.
 
 ### Behavior and validation
 
 MOR reuses approved Master compliance. VA and PA create independent compliance sessions, so activation is asynchronous. A same-owner/model/reference/parent match reuses the existing identity; keep `reference_id` stable on retry.
 
-### Errors
+### Account creation fee errors
+
+| API result code | Meaning on this operation | Action |
+| --- | --- | --- |
+| `4004004` | Account creation fee configuration was not found. | Contact your administrator or support to configure the fee. |
+| `4001999` | The creation fee could not be charged because the balance is insufficient. | Fund the Master Account and retry with the same `reference_id`. |
+
+These are values of the outer JSON `code`, not HTTP status codes. Interpret them in the context of this operation; see [Error Catalog](/integration-overview/error-catalog#accounts-and-verification).
+
+### Other errors
 
 Every call can fail for missing or invalid signature headers, an expired timestamp, nonce replay, an invalid body hash or signature, insufficient permission, or a downstream service error. Endpoint-specific errors include:
 
@@ -44,40 +88,104 @@ Every call can fail for missing or invalid signature headers, an expired timesta
 * `invalid_user` when an eligible active Master context is unavailable.
 * `permission_denied` when a linked account is outside the owner's allowed relationship.
 
-### Example request
+## Request examples
 
-```bash wrap
+Use a user-scoped credential and sign the exact JSON body with the required HMAC headers. The examples contain placeholders: replace document and account identifiers with valid authorized test data. The placeholder strings are not valid CPF/CNPJ values.
+
+<Tabs>
+  <Tab title="MOR">
+```json
+{
+  "reference_id": "managed-mor-demo-001",
+  "model": 1,
+  "trading_name": "Demo Trading Name"
+}
+```
+  </Tab>
+  <Tab title="VA · CNPJ">
+```json
+{
+  "reference_id": "managed-va-demo-001",
+  "model": 2,
+  "compliance_mode": 1,
+  "trading_name": "Demo VA Company",
+  "compliance_payload": {
+    "document_type": 2,
+    "tax_id": "<CNPJ>",
+    "legal_name": "Demo VA Company LTDA"
+  },
+  "return_url": "https://merchant.example.test/managed-return"
+}
+```
+  </Tab>
+  <Tab title="PA · CPF">
+```json
+{
+  "reference_id": "managed-pa-person-demo-001",
+  "model": 3,
+  "compliance_mode": 1,
+  "compliance_payload": {
+    "document_type": 1,
+    "tax_id": "<CPF>",
+    "legal_name": "Demo Account Holder"
+  },
+  "return_url": "https://merchant.example.test/managed-return",
+  "linked_account": {
+    "ispb": "<LINKED_ACCOUNT_ISPB>",
+    "account_number": "<LINKED_ACCOUNT_NUMBER>"
+  }
+}
+```
+  </Tab>
+  <Tab title="PA · CNPJ">
+```json
+{
+  "reference_id": "managed-pa-business-demo-001",
+  "model": 3,
+  "compliance_mode": 1,
+  "compliance_payload": {
+    "document_type": 2,
+    "tax_id": "<CNPJ>",
+    "legal_name": "Demo PA Company LTDA"
+  },
+  "return_url": "https://merchant.example.test/managed-return",
+  "linked_account": {
+    "ispb": "<LINKED_ACCOUNT_ISPB>",
+    "account_number": "<LINKED_ACCOUNT_NUMBER>"
+  }
+}
+```
+  </Tab>
+</Tabs>
+
+Save your chosen body as `request.json`. Generate the signature for its exact bytes before sending:
+
+```bash
 curl --request POST "${BASE_URL}/v3/onboarding/managed_accounts/create" \
   --header "Content-Type: application/json" \
   --header "X-Client-ID: ${CLIENT_ID}" \
   --header "X-Timestamp: ${TIMESTAMP_MS}" \
   --header "X-Nonce: ${NONCE}" \
   --header "X-Signature: ${SIGNATURE}" \
-  --data '{
-	  "reference_id": "managed-va-demo-001",
-	  "model": 2,
-	  "compliance_mode": 1,
-	  "compliance_payload": {
-	    "document_type": 1,
-	    "tax_id": "00000000000",
-	    "legal_name": "Demo Subject"
-	  },
-	  "return_url": "https://merchant.example.test/managed-return"
-	}'
+  --data-binary @request.json
 ```
 
-### Example response
+## Example response
 
-```json wrap
+Illustrative Hosted Link response for a VA. The verification URL is a placeholder; use the URL returned by the API.
+
+```json
 {
   "code": 200,
+  "message": "success",
   "data": {
     "reference_id": "managed-va-demo-001",
     "model": 2,
     "status": 1,
-    "verification_url": "https://"
+    "verification_url": "https://verify.example.test/session/demo",
+    "error": null,
+    "result": null
   },
-  "message": "success",
   "time": 1710002000000
 }
 ```
