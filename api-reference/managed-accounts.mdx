@@ -7,9 +7,13 @@ description: "Some Entities are able to have multiple accounts. Here is how to m
 
 1. **MOR:** Linked to the Main User's CNPJ
 2. **VA:** Linked to a different CNPJ
-3. **PA:** Linked to a different CPF
+3. **PA:** Supports CPF for individuals (KYC) and CNPJ for businesses (KYB).
 
 Note: All accounts are managed by and are the sole responsibility of the Main User.
+
+<Note>
+  Before creating a managed account, ask your administrator to configure the account creation fee and ensure the Master Account has sufficient funds. See [Create Managed Account](/api-reference/managed-accounts/create-managed-account#before-you-create-an-account) for requirements and examples for each model.
+</Note>
 
 ### Endpoints Related to Managed Accounts
 
