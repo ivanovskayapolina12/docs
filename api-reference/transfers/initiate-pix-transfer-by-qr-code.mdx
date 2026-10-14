@@ -29,7 +29,7 @@ The curl example below uses an ACCOUNT credential bound to the operated account,
 
 ### Behavior and validation
 
-The decoded QR must be ACTIVE. The confirmation reference is account-bound and cached for five minutes.
+The decoded QR must be ACTIVE. An expired QR code is rejected when scanned/decoded; handle the returned error and obtain a valid QR code before continuing. The confirmation reference is account-bound and cached for five minutes.
 
 | Value | Meaning in this operation |
 | --- | --- |
