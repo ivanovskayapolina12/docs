@@ -32,7 +32,7 @@ The query is constrained to outbound flow and the selected account. Party docume
 | Identifiers available | Next step |
 | --- | --- |
 | `txn_id` or `settlement_id` | Query this endpoint for the selected account and inspect the original transfer result before deciding whether to retry. |
-| Only `merchant_order_id`, or neither required ID | This endpoint cannot query the transfer using those inputs alone. Pause automatic resubmission and contact your integration representative to establish the original outcome. |
+| Only `merchant_order_id`, or neither required ID | Lookup by `merchant_order_id` alone is not supported. You must know `txn_id` or `settlement_id`. Pause automatic resubmission and contact your integration representative to establish the original outcome. |
 
 A lost response does not establish whether the transfer was accepted. Do not treat the missing response as permission to send another transfer. See [Error Catalog](/integration-overview/error-catalog) for handling uncertain results.
 
@@ -55,4 +55,3 @@ curl --request POST ${BASE_URL}/v3/transfers/details --header Content-Type:appli
 ```json
 {"code":200,"message":"success","data":{"details":{"txn_id":"demo-pix-txn-003","settlement_id":"demo-settlement-003","merchant_order_id":"demo-manual-pix-001","txn_status":2,"source_type":2,"amount":"25.00","currency":"BRL","memo":"Demo supplier payment","debit_fee":"0.00","rejection_reason":"","payer":null,"payee":null}},"time":1767225600000}
 ```
-
