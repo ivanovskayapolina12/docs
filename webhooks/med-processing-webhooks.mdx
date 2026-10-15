@@ -5,7 +5,27 @@ description: "Receive MED case and infraction lifecycle events."
 
 MED processing webhooks report case and infraction lifecycle changes through a common versioned envelope.
 
-Receiving these events requires an active `MED_PROCESSING` subscription for the intended owner. `MED_PROCESSING` is not one of the numeric values currently accepted by `/v3/webhooks`.
+Receiving these events requires an active subscription for the intended owner and event type.
+
+<Warning>
+  The ordinary [Create Webhook](/api-reference/webhook-management/create-webhook) endpoint does not accept `MED_PROCESSING`. The event names below describe delivered MED payloads; they are not additional values for the ordinary subscription API. Create the subscription in the **Merchant Dashboard**. OpenAPI does not currently support creating these subscriptions.
+</Warning>
+
+### Configure delivery in the Merchant Dashboard
+
+<Steps>
+  <Step title="Open webhook settings">
+    In the Merchant Dashboard, select **API Keys**. On the **API Keys and Webhooks** page, find **Webhooks** and click **Add Webhook**.
+  </Step>
+  <Step title="Select the application and event type">
+    Select the intended **App ID**. For **Event Type**, select **MED PROCESSING** for MED case notifications or **INFRACTION PROCESSING** for infraction notifications. These are dashboard labels; the payload event names are listed in [Events](#events).
+  </Step>
+  <Step title="Save the callback endpoint">
+    Enter your receiver's **Callback URL**, select **application/json** for **Content Type**, and click **Confirm**. Check that the subscription appears in the **Webhooks** list with status **Active**. If you need both event types, add a subscription for each.
+  </Step>
+</Steps>
+
+An active subscription confirms configuration, not successful delivery. Implement [Signature Verification](/webhooks/signature-verification) and [Delivery and Retries](/webhooks/delivery-and-retries) in your receiver.
 
 ### Subscription scopes
 

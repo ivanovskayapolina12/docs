@@ -72,7 +72,7 @@ See [Objects & Enums](/integration-overview/object-and-enums-references) for tra
 | Field | JSON type | Purpose |
 | --- | --- | --- |
 | `snapshot_timestamp` | number | Optional snapshot timestamp. The response includes a snapshot timestamp for the result set. |
-| `cursor` | object | Optional continuation cursor containing numeric `timestamp` and string `id`. |
+| `cursor` | object | Optional continuation cursor containing numeric `timestamp`, string `id`, and numeric `direction`. Pass back the complete returned object unchanged. |
 
 See [Continue through results](#continue-through-results) for an example using the response cursor.
 
@@ -158,7 +158,8 @@ A successful API result has outer JSON `code: 200`. The `data` object contains s
     "snapshot_timestamp": 1767225600000,
     "cursor": {
       "timestamp": 1767225600000,
-      "id": "demo-cursor-001"
+      "id": "demo-cursor-001",
+      "direction": 1
     }
   },
   "time": 1767225600000
@@ -171,7 +172,7 @@ A successful API result has outer JSON `code: 200`. The `data` object contains s
 | --- | --- | --- |
 | `statements` | array | Transaction ledger entries for the selected account. |
 | `snapshot_timestamp` | number | Snapshot timestamp returned with the result set. |
-| `cursor` | object | Continuation metadata with numeric `timestamp` and string `id`. |
+| `cursor` | object | Continuation metadata with numeric `timestamp`, string `id`, and numeric `direction`. Preserve the returned values. |
 
 Results are requested in descending order. This endpoint does not populate a `page` field; use the cursor metadata rather than relying on a page number.
 
@@ -218,12 +219,14 @@ Each object in `statements[]` can contain the following documented fields.
     Supply the required date range and any filters. Omit `cursor` for the initial request.
   </Step>
   <Step title="Read the continuation metadata">
-    Process `statements[]` and retain the returned `cursor.timestamp`, `cursor.id`, and `snapshot_timestamp`.
+    Process `statements[]` and retain the complete returned `cursor` object, including `timestamp`, `id`, and `direction`, along with `snapshot_timestamp`.
   </Step>
   <Step title="Build and sign the continuation request">
-    To continue the same query, keep the account, date range, and filters consistent. Supply the returned cursor and snapshot timestamp in the next request body. Sign that new body with a fresh timestamp and nonce.
+    To continue the same query, keep the account, date range, and filters consistent. Copy the complete returned cursor into the next request body. If you use `snapshot_timestamp`, preserve the returned value for the same query. Sign that new body with a fresh timestamp and nonce.
   </Step>
 </Steps>
+
+The confirmed pagination flow copies the previous response's entire `cursor` object into the next request. Do not reconstruct the cursor from the last visible statement or increment a page number instead.
 
 The body below illustrates continuation using the response example above. Use the actual values returned by your request instead of these sample cursor values.
 
@@ -236,7 +239,8 @@ The body below illustrates continuation using the response example above. Use th
   "snapshot_timestamp": 1767225600000,
   "cursor": {
     "timestamp": 1767225600000,
-    "id": "demo-cursor-001"
+    "id": "demo-cursor-001",
+      "direction": 1
   }
 }
 ```

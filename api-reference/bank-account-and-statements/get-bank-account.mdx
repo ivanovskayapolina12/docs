@@ -88,6 +88,10 @@ curl --request POST "${BASE_URL}/v3/bank_account" \
 
 A successful API result has outer JSON `code: 200`. The `data` object contains the account details below. Identifiers and values in this example are illustrative.
 
+<Warning>
+  **A successful response does not prove that a zero balance is genuine.** If the balance lookup fails, the outer `code` can still be `200` and balance components fall back to `"0"`. The current implementation does not distinguish this fallback from a real zero balance in the response. A zero value alone cannot tell you whether the balance lookup succeeded. See [Partial failures](#partial-failures).
+</Warning>
+
 ```json
 {
   "code": 200,
@@ -130,7 +134,7 @@ All fields in the following tables are inside `data`.
 | `account_number` | string | Identifier of the selected account. |
 | `ispb` | string | ISPB associated with the account. Preserve the string representation, including leading zeros. |
 | `currency` | string | Currency of the returned balances. The documented fallback is `"BRL"`. |
-| `balance` | string | Current balance returned for the account. |
+| `balance` | string | Current balance, or a fallback zero if the balance lookup fails. See [Partial failures](#partial-failures). |
 | `available_amount` | string | Available balance component. |
 | `frozen_amount` | string | Total frozen amount. |
 | `med_frozen_amount` | string | Amount frozen for MED. |
@@ -160,7 +164,7 @@ For the example above, `frozen_amount` and `med_frozen_amount` are both `"20.00"
 
 ## Partial failures
 
-Related lookups do not all have the same failure behavior. Check the returned values before treating the response as a complete account snapshot.
+Related lookups do not all have the same failure behavior. The returned values alone may not reveal which lookups failed. Do not treat outer success as proof of a complete account snapshot.
 
 | Lookup that fails | Documented behavior |
 | --- | --- |
