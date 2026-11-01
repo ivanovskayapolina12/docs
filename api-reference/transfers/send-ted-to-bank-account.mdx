@@ -36,12 +36,12 @@ Every call can fail for missing or invalid signature headers, an expired timesta
 
 ### Example request
 
-```bash
+```bash wrap
 curl --request POST ${BASE_URL}/v3/transfers/ted/bank-account --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"amount":"50.00","merchant_order_id":"demo-ted-001","purpose":5,"payee":{"name":"Demo Supplier","document_id":"DEMO-DOC-002","document_type":2,"bank_account":"DEMO-SUPPLIER-02","bank_account_type":1,"bank_branch":"0001","bank_code":"87654321"}}'
 ```
 
 ### Example response
 
-```json
+```json wrap
 {"code":200,"message":"success","data":{"merchant_order_id":"demo-ted-001","txn_id":"demo-ted-txn-001","txn_status":1},"time":1767225600000}
 ```
