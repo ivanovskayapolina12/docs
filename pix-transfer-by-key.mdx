@@ -43,6 +43,7 @@ Resolves a PIX key against DICT and creates a temporary reference (`ref_id`) bou
 | **Field** | **Type** | **Required** | **Description / Validation** |
 | :-- | :-- | :-- | :-- |
 | `pix_key` | String | Yes | Target PIX key (CPF, CNPJ, Email, Phone, or EVP). The service automatically trims and normalizes input data. |
+| `amount` | String | Yes | Transfer amount. Positive decimal string with up to two decimal places (e.g., `"12.34"`). |
 
 ### Success Response Data (`data`)
 
