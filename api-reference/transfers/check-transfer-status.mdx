@@ -1,5 +1,5 @@
 ---
-title: "Check Transfer Status"
+title: "Check Transaction Status"
 description: "Retrieve the current status of an outbound transfer."
 ---
 
@@ -38,12 +38,19 @@ Every call can fail for missing or invalid signature headers, an expired timesta
 
 ### Example request
 
-```bash
+```bash wrap
 curl --request POST ${BASE_URL}/v3/transfers/status/check --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"txn_id":"demo-pix-txn-003"}'
 ```
 
 ### Example response
 
-```json
-{"code":200,"message":"success","data":{"txn_status":2},"time":1767225600000}
+```json wrap
+{
+	"code":200,
+	"message":"success",
+	"data":{
+		"txn_status":2
+	},
+	"time":1767225600000
+}
 ```

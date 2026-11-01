@@ -1,5 +1,5 @@
 ---
-title: "Send PIX to Bank Account"
+title: "PIX Pay by Bank Account"
 description: "Send a manual PIX transfer to supplied bank details."
 ---
 
@@ -49,4 +49,3 @@ curl --request POST ${BASE_URL}/v3/transfers/pix/bank-account --header Content-T
 ```json
 {"code":200,"message":"success","data":{"merchant_order_id":"demo-manual-pix-001","txn_id":"demo-pix-txn-003","txn_status":1},"time":1767225600000}
 ```
-

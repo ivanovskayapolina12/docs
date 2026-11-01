@@ -44,13 +44,11 @@
             ]
           },
           {
-            "group": "Transfers",
+            "group": "Payments",
             "pages": [
               "api-reference/transfers",
-              "api-reference/transfers/initiate-pix-transfer-by-key",
-              "api-reference/transfers/confirm-pix-transfer-by-key",
-              "api-reference/transfers/initiate-pix-transfer-by-qr-code",
-              "api-reference/transfers/confirm-pix-transfer-by-qr-code",
+              "pix-transfer-by-key",
+              "pix-pay-by-qr-code",
               "api-reference/transfers/send-pix-to-bank-account",
               "api-reference/transfers/send-ted-to-bank-account",
               "api-reference/transfers/get-transfer-details",

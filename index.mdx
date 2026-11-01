@@ -28,6 +28,143 @@ Choose the workflow that matches your application.
 | Work with accounts | Retrieve balances and statements, or integrate master and managed account onboarding. | [Account data](/api-reference/bank-account-and-statements) · [Master accounts](/api-reference/master-accounts) · [Managed accounts](/api-reference/managed-accounts) |
 | Receive event updates | Handle signed notifications for transactions, compliance reviews, and MED cases. | [Webhooks](/webhooks) |
 
+### Product Capabilities
+
+<table>
+  <colgroup>
+    <col width="331" />
+    <col width="508" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Capability</th>
+      <th>Supported Features</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Account Opening & Management</td>
+      <td>MOR, VA, and PA account creation and inquiry</td>
+    </tr>
+    <tr>
+      <td>Account & Funds Inquiry</td>
+      <td>Bank account information, balances, frozen amounts, fee and limit configurations, and transaction history</td>
+    </tr>
+    <tr>
+      <td>Pix Key Management</td>
+      <td>Create, retrieve active Pix Keys associated with an account, and delete Pix Keys</td>
+    </tr>
+    <tr>
+      <td>Payment Collection</td>
+      <td>Generate dynamic and static Pix QR Codes, retrieve QR Code details, and query Pix incoming payment details</td>
+    </tr>
+    <tr>
+      <td>Payments & Transfers</td>
+      <td>Pix Key payments, Pix QR Code payments, Pix bank account transfers, TED bank account transfers, and internal transfers within the same financial institution</td>
+    </tr>
+    <tr>
+      <td>Refunds</td>
+      <td>Refund original Pix incoming payments, retrieve refund details, and check refund status</td>
+    </tr>
+    <tr>
+      <td>Dispute Management</td>
+      <td>Create, query, and cancel eligible MED cases; query Infraction records</td>
+    </tr>
+    <tr>
+      <td>Event Notifications</td>
+      <td>Manage webhook subscriptions for Pix incoming and outgoing payments, refunds, and account compliance events</td>
+    </tr>
+  </tbody>
+</table>
+
+<img
+  src="/images/image-1.png"
+  alt="Image"
+  title="Image"
+/>
+
+### Relationship Between Accounts and Payment Functions
+
+- After opening an account, verify its compliance status and confirm that the bank account is ready before using the enabled account services and payment capabilities.
+- Collections, payments, and account inquiries must use the appropriate authorization context for the target account. Account ownership and hierarchy do not imply automatic balance aggregation.
+- Pix refunds must be linked to the original collection transaction. MED cases must also be linked to the original Pix transaction and meet their respective business requirements. The connections indicate business relationships, not call sequences or quantity relationships.
+- Webhooks notify the business of changes based on subscribed event types and scopes. Use detail, status, and transaction record queries to confirm processing results. MED callbacks are subject to the enabled services and agreed delivery scope.
+
+### Key Terminology
+
+<table>
+  <colgroup>
+    <col width="188" />
+    <col width="531" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>MA / Master Account</td>
+      <td>The master account that establishes the business entity and defines ownership and management relationships for managed accounts.</td>
+    </tr>
+    <tr>
+      <td>Managed Account</td>
+      <td>A managed account, including MOR, VA, and PA.</td>
+    </tr>
+    <tr>
+      <td>MOR</td>
+      <td>An operational account that reuses the approved compliance records of its associated MA.</td>
+    </tr>
+    <tr>
+      <td>VA</td>
+      <td>A managed account that must belong to a parent MA and maintains its own compliance records and bank account.</td>
+    </tr>
+    <tr>
+      <td>PA</td>
+      <td>A payment account that must belong to a parent MA or a VA under that MA, and maintains its own compliance records and bank account.</td>
+    </tr>
+    <tr>
+      <td>PLATFORM / USER / ACCOUNT</td>
+      <td>The three API credential identities: platform-level, user-level, and bank account-level.</td>
+    </tr>
+    <tr>
+      <td>ISPB</td>
+      <td>The bank institution identifier, which is used together with the bank account number to identify an account.</td>
+    </tr>
+    <tr>
+      <td>Pix Key</td>
+      <td>An identifier that points to a Pix receiving account. It is distinct from API signing credentials.</td>
+    </tr>
+    <tr>
+      <td>EndToEnd ID</td>
+      <td>The identifier of the original Pix transaction, used to link transactions and perform operations such as MED case handling.</td>
+    </tr>
+    <tr>
+      <td>Webhook</td>
+      <td>A mechanism for notifying the integrating party of business events by sending callbacks to a designated URL.</td>
+    </tr>
+    <tr>
+      <td>MED / Infraction</td>
+      <td>A special Pix return and recovery mechanism, and the associated violation reports.</td>
+    </tr>
+  </tbody>
+</table>
+
+### Pagsmile Feature Overview
+
+The Pagsmile Open API integrates account and payment services into your business system. Through the API, you can create managed accounts, retrieve bank account information, manage Pix Keys, initiate payments and refunds, and track processing results through query APIs and event notifications.
+
+Business operations use POST requests with JSON request bodies and AK/SK signature authentication. Account permissions are determined by the credential type, account ownership, and target account.
+
+### Intended Audience
+
+The Open API is designed for businesses and platforms that need to manage accounts, payments, and transaction results within their own systems.
+
+Integrators can manage their own primary accounts. With the appropriate permissions for managed accounts, they can also create Virtual Accounts (VAs) or Platform Accounts (PAs) for their business entities and manage each account's information and transaction records separately.
+
+Account creation and management, fund operations, and event subscriptions have different authorization scopes. Before integration, configure the appropriate credentials based on the features you need to use.
+
 ## Start your integration
 
 <Steps>

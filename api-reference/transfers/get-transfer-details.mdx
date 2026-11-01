@@ -1,5 +1,5 @@
 ---
-title: "Get Transfer Details"
+title: "Get Transaction Details"
 description: "Retrieve an outbound transfer owned by the selected account."
 ---
 
@@ -46,12 +46,39 @@ Every call can fail for missing or invalid signature headers, an expired timesta
 
 ### Example request
 
-```bash
-curl --request POST ${BASE_URL}/v3/transfers/details --header Content-Type:application/json --header X-Client-ID:${CLIENT_ID} --header X-Timestamp:${TIMESTAMP_MS} --header X-Nonce:${NONCE} --header X-Content-Hash:${CONTENT_HASH} --header X-Signature:${SIGNATURE} --data '{"txn_id":"demo-pix-txn-003"}'
+```bash wrap
+curl --request POST ${BASE_URL}/v3/transfers/details
+	--header Content-Type:application/json 
+	--header X-Client-ID:${CLIENT_ID} 
+	--header X-Timestamp:${TIMESTAMP_MS} 
+	--header X-Nonce:${NONCE} 
+	--header X-Content-Hash:${CONTENT_HASH} 
+	--header X-Signature:${SIGNATURE} 
+--data '{"txn_id":"demo-pix-txn-003"}'
 ```
 
 ### Example response
 
-```json
-{"code":200,"message":"success","data":{"details":{"txn_id":"demo-pix-txn-003","settlement_id":"demo-settlement-003","merchant_order_id":"demo-manual-pix-001","txn_status":2,"source_type":2,"amount":"25.00","currency":"BRL","memo":"Demo supplier payment","debit_fee":"0.00","rejection_reason":"","payer":null,"payee":null}},"time":1767225600000}
+```json wrap
+{
+	"code":200,
+	"message":"success",
+	"data":{
+		"details":{
+			"txn_id":"demo-pix-txn-003",
+			"settlement_id":"demo-settlement-003",
+			"merchant_order_id":"demo-manual-pix-001",
+			"txn_status":2,
+			"source_type":2,
+			"amount":"25.00",
+			"currency":"BRL",
+			"memo":"Demo supplier payment",
+			"debit_fee":"0.00",
+			"rejection_reason":"",
+			"payer":null,
+			"payee":null
+		}
+	},
+	"time":1767225600000
+}
 ```
