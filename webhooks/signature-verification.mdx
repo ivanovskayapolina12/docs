@@ -3,94 +3,88 @@ title: "Signature Verification"
 description: "Verify webhook authenticity with HMAC-SHA256."
 ---
 
-Every webhook request is signed with HMAC-SHA256. Verify the signature against the exact HTTP request before parsing or processing its JSON body.
+All webhook payloads sent by Pagsmile are signed using **HMAC-SHA256**. Validating the request signature ensures data authenticity, integrity, and protection against unauthorized requests.
 
-The API Secret is used locally to calculate the signature and is never included in the request.
+> **Security Requirement:** Always verify the signature against the exact raw HTTP request body _before_ parsing the JSON body. Your `API Secret` is used locally to compute the signature and is never transmitted in the request.
 
-### Required headers
+## Required Request Headers
 
-* `Content-Type` — exact content type included in the signature.
-* `X-Client-ID` — API Key identifying the signing credential.
-* `X-Timestamp` — request time as Unix milliseconds.
-* `X-Nonce` — 32-character lowercase hexadecimal nonce.
-* `X-Content-Hash` — lowercase SHA-256 hex digest of the raw body.
-* `X-Signature` — lowercase HMAC-SHA256 hex signature.
+Every incoming webhook request includes six headers essential for authenticity verification:
 
-`X-Signature` is not part of canonical headers. The other five headers are signed. Use the exact received `Content-Type` value after trimming surrounding whitespace; do not normalize or replace it.
+<table>
+  <colgroup>
+    <col width="140" />
+    <col width="556" />
+  </colgroup>
+  <thead>
+    <tr>
+      <td>**Header**</td>
+      <td>**Description**</td>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`Content-Type`</td>
+      <td>Exact request content-type string used during signature generation.</td>
+    </tr>
+    <tr>
+      <td>`X-Client-ID`</td>
+      <td>API Key identifying the signing credential.</td>
+    </tr>
+    <tr>
+      <td>`X-Timestamp`</td>
+      <td>Request execution time in Unix milliseconds.</td>
+    </tr>
+    <tr>
+      <td>`X-Nonce`</td>
+      <td>32-character lowercase hexadecimal random string.</td>
+    </tr>
+    <tr>
+      <td>`X-Content-Hash`</td>
+      <td>Lowercase SHA-256 hex digest computed over the raw payload body.</td>
+    </tr>
+    <tr>
+      <td>`X-Signature`</td>
+      <td>Lowercase HMAC-SHA256 hex signature to compare against.</td>
+    </tr>
+  </tbody>
+</table>
 
-### Signature formula
+> 📌 **Note:** `X-Signature` is not included in canonical headers; it is the target value used for final verification.
 
-1. Calculate `content_hash = lowercase_hex(SHA256(raw_request_body))`.
-2. Build `StringToSign` with the rules below.
-3. Calculate `signature = lowercase_hex(HMAC-SHA256(api_secret, StringToSign))`.
-4. Compare the calculated value with `X-Signature` using a constant-time comparison.
+## Signature Construction (`StringToSign`)
 
-### StringToSign
+To calculate the expected signature, construct the `StringToSign` string by concatenating the seven components below with a single line feed (`\n`). **Do not append a trailing line feed at the end.**
 
-Join these seven components with one line feed (`\n`) in this exact order. Do not append a trailing line feed.
+Plaintext
 
-1. Uppercase HTTP method
-2. Normalized URL path
-3. Canonical query
-4. Canonical headers
-5. Content hash
-6. Timestamp
-7. Nonce
+```text highlight={2-3}
+StringToSign = 
+  HTTP_METHOD + "\n" +
+  CANONICAL_PATH + "\n" +
+  CANONICAL_QUERY + "\n" +
+  CANONICAL_HEADERS + "\n" +
+  CONTENT_HASH + "\n" +
+  TIMESTAMP + "\n" +
+  NONCE
+```
 
-The content hash, timestamp, and nonce appear in canonical headers and again as the final three components. Do not remove the duplicates.
+### Canonicalization Rules
 
-### Canonicalization rules
+1. **HTTP Method:** Convert to uppercase string (e.g., `POST`).
+2. **Canonical Path:**
+   - Include path only (exclude scheme, host, query, and fragment).
+   - Normalize empty paths to `/`.
+   - Preserve trailing slashes.
+   - _Best Practice:_ Use a simple ASCII path (e.g., `/webhooks/pagsmile`) to prevent escaping mismatches across event families.
+3. **Canonical Query:** Lexically sort query parameters by name, format as `name=value` (using `+` for spaces), and join with `&`. If no query exists, use an empty line.
+4. **Canonical Headers:** Formatted in lexical order for exact header names: `content-type`, `x-client-id`, `x-content-hash`, `x-nonce`, `x-timestamp`. Trim whitespace and format as `lowercase-name:trimmed-value`.
+5. **Content Hash:** SHA-256 computed over exact raw network bytes. **Do not** parse and re-serialize JSON before hashing.
 
-#### Method
+## Verification Pipeline (10-Step Execution Flow)
 
-Convert the HTTP method to uppercase. Webhook deliveries use `POST`.
+Follow this strict step-by-step pipeline inside your application middleware:
 
-#### Path
+![Image](/images/image-5.png "Image")
 
-* Use only the callback path; exclude scheme, host, query, and fragment.
-* Normalize an empty path to `/`.
-* Preserve a trailing slash exactly.
-* ACCOUNT transaction deliveries sign the decoded URL path.
-* USER transaction, KYB, and MED deliveries sign the escaped path.
-
-Because percent-encoded path segments can produce different canonical values across delivery families, use a simple ASCII callback path such as `/pagsmile/webhooks`.
-
-#### Query
-
-* Parse the raw query and sort parameter names lexically.
-* Preserve the original value order for repeated names.
-* Encode names and values using Go `url.QueryEscape` behavior; spaces become `+`.
-* Join encoded `name=value` items with `&`.
-* When no query exists, keep the empty query line.
-* If parsing fails, use the unmodified raw query.
-
-Example: `z=9&b=2&a=hello world` becomes `a=hello+world&b=2&z=9`.
-
-#### Headers
-
-Sign these lowercase header names in lexical order:
-
-* `content-type`
-* `x-client-id`
-* `x-content-hash`
-* `x-nonce`
-* `x-timestamp`
-
-Trim leading and trailing whitespace from each value and format every line as `lowercase-header-name:trimmed-value`. Do not include `host`, `content-length`, `user-agent`, or `x-signature`.
-
-#### Body
-
-Calculate SHA-256 over the exact raw bytes received from the network. Do not parse and reserialize JSON before hashing it. Whitespace, property order, escaping, encoding, and line endings all affect the result.
-
-### Verification order
-
-1. Read and retain the raw request body.
-2. Require all six signature headers.
-3. Resolve the API Secret associated with `X-Client-ID`.
-4. Parse `X-Timestamp` and enforce a freshness window.
-5. Hash the raw body and compare it with `X-Content-Hash`.
-6. Rebuild the canonical query, canonical headers, and `StringToSign`.
-7. Calculate HMAC-SHA256 with the API Secret.
-8. Compare with `X-Signature` in constant time.
-9. Atomically reject a reused `X-Client-ID` and `X-Nonce` pair.
-10. Parse and process the event only after verification succeeds.
+> 🛡️ **Timing-Attack Protection:** Always compare your calculated signature with `X-Signature` using a constant-time comparison function (e.g., `crypto.timingSafeEqual` in Node.js or `hmac.equal` in Python) to prevent side-channel timing attacks.
