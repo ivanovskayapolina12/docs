@@ -3,63 +3,136 @@ title: "Delivery and Retries"
 description: "Understand acknowledgement, retries, duplicates, and ordering."
 ---
 
-Pagsmile uses at-least-once delivery. A webhook can arrive more than once, and events are not guaranteed to arrive in business-time order.
+Pagsmile uses **at-least-once delivery**. A webhook can arrive more than once, and events are not guaranteed to arrive in business-time order.
 
-### Successful acknowledgement
+---
 
-A delivery is acknowledged only when the sender evaluates a final HTTP 200 response.
+## Successful Acknowledgement
 
-* The response body is not used to determine success.
-* A direct 201, 202, 204, other non-200 response, or network error is a failure.
-* KYB and MED deliveries do not follow redirects; any 3xx response is a failed acknowledgement.
-* Transaction USER and ACCOUNT deliveries currently follow supported redirects and evaluate the final destination response.
-* Register the final callback URL directly and do not rely on redirects, because authentication headers can be forwarded to the redirect destination.
-* Return 200 only after the event has been verified and durably accepted.
-* If an event is already stored, return 200 after recognizing it as a duplicate.
+A delivery is acknowledged **only when your server returns a final `HTTP 200` response**.
 
-A recommended receiver flow is:
+<Warning>
+  - **Non-200 Statuses:** Responses like `201`, `202`, `204`, `4xx`, `5xx`, or network timeouts are evaluated as failures.
+  - **Redirects (3xx):** KYB and MED deliveries do **not** follow redirects; any `3xx` response is a failed acknowledgement. Register the final callback URL directly.
+  - **Response Body:** The HTTP response body is ignored when determining delivery success.
+</Warning>
 
-1. Read the raw body.
-2. Verify the signature and replay controls.
-3. Validate the minimum event fields.
-4. Insert the idempotency record and raw event atomically.
-5. Return 200.
-6. Perform slower business processing asynchronously.
+---
 
-### Delivery identifiers
+## Recommended Receiver Pipeline
 
-* Transaction USER: stable `delivery_id`.
-* Transaction ACCOUNT: no stable `delivery_id`.
-* KYB USER and PLATFORM: stable `delivery_id`.
-* MED USER and ACCOUNT: stable `delivery_id`.
+To prevent timeouts and handle delivery guarantees effectively, follow this sequence in your receiver:
 
-Use `delivery_id` as the idempotency key when present. For a transaction callback without it, use the configured event type together with `txn_id`.
+<Steps>
+  <Step title="Read Raw Bytes">
+    Read the raw HTTP request body from the network stream.
+  </Step>
+  <Step title="Verify Authenticity">
+    Validate the HMAC signature (`X-Signature`) and replay controls (`X-Nonce`).
+  </Step>
+  <Step title="Validate Minimum Fields">
+    Ensure required payload fields are present.
+  </Step>
+  <Step title="Atomically Store Record">
+    Insert the idempotency key and raw event into your database.
+  </Step>
+  <Step title="Acknowledge Fast (HTTP 200)">
+    Return `HTTP 200` immediately to acknowledge delivery.
+  </Step>
+  <Step title="Process Asynchronously">
+    Execute slower downstream business logic using background queues/workers.
+  </Step>
+</Steps>
 
-### HTTP retry schedule
+---
 
-Retry-enabled ACCOUNT and USER transaction deliveries, KYB USER and PLATFORM deliveries, and MED USER and ACCOUNT deliveries make up to eight HTTP attempts: the initial attempt plus seven retries.
+## Delivery Identifiers & Idempotency Keys
 
-* Retry 1: 5 seconds
-* Retry 2: 10 seconds
-* Retry 3: 20 seconds
-* Retry 4: 30 seconds
-* Retry 5: 60 seconds
-* Retry 6: 120 seconds
-* Retry 7: 240 seconds
+Different webhook scopes provide different delivery identifiers:
 
-### Subscription changes
+<table>
+  <colgroup>
+    <col width="233" />
+    <col width="189" />
+    <col width="300" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Scope / Family</th>
+      <th>Identifier Type</th>
+      <th>Recommended Idempotency Key</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>**Transaction (USER)**</td>
+      <td>Stable `delivery_id`</td>
+      <td>`delivery_id`</td>
+    </tr>
+    <tr>
+      <td>**Transaction (ACCOUNT)**</td>
+      <td>No `delivery_id`</td>
+      <td>`txn_id` + `configured_event_type`</td>
+    </tr>
+    <tr>
+      <td>**KYB (USER & PLATFORM)**</td>
+      <td>Stable `delivery_id`</td>
+      <td>`delivery_id`</td>
+    </tr>
+    <tr>
+      <td>**MED (USER & ACCOUNT)**</td>
+      <td>Stable `delivery_id`</td>
+      <td>`delivery_id`</td>
+    </tr>
+  </tbody>
+</table>
 
-Durable deliveries revalidate the subscription before sending. A queued delivery can be cancelled when its subscription is inactive or its callback, credential, owner, target, or revision no longer matches the stored delivery.
+<Note>
+  If a duplicate event arrives after your system has already processed it, return `HTTP 200` immediately after recognizing the key.
+</Note>
 
-Keep the subscription active and unchanged while expected deliveries are pending.
+---
 
-For transaction ACCOUNT delivery, callback configuration is resolved at send time. Configure the endpoint before the event occurs. If no matching callback URL exists at send time, no automatic HTTP retry is scheduled for that pending record.
+## HTTP Retry Schedule
 
-### Receiver requirements
+When a delivery attempt fails, Pagsmile schedules up to **8 total attempts** (initial attempt + 7 retries):
 
-* Make processing idempotent.
-* Do not assume global ordering.
-* For MED state, compare `resource_version` before applying a snapshot.
-* Preserve the original event for reconciliation.
-* Respond quickly; do not wait for downstream business processing.
-* Monitor non-200 responses, latency, duplicate rate, and signature failures.
+<CardGroup cols={4}>
+  <Card title="Retry 1" icon="clock">
+    5 seconds
+  </Card>
+
+  <Card title="Retry 2" icon="clock">
+    10 seconds
+  </Card>
+
+  <Card title="Retry 3" icon="clock">
+    20 seconds
+  </Card>
+
+  <Card title="Retry 4" icon="clock">
+    30 seconds
+  </Card>
+
+  <Card title="Retry 5" icon="clock">
+    60 seconds (1m)
+  </Card>
+
+  <Card title="Retry 6" icon="clock">
+    120 seconds (2m)
+  </Card>
+
+  <Card title="Retry 7" icon="clock">
+    240 seconds (4m)
+  </Card>
+</CardGroup>
+
+---
+
+## Receiver Best Practices Checklist
+
+* **Make processing idempotent:** Always deduplicate incoming requests using stable keys.
+* **Do not assume global ordering:** Events may arrive out of order.
+* **Preserve raw events:** Store the raw payload for audit and reconciliation purposes.
+* **Respond quickly:** Avoid executing heavy database transactions before returning `HTTP 200`.
+* **Monitor metrics:** Track latency, `non-200` response rates, and signature validation failures.

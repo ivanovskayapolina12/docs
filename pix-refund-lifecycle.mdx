@@ -3,24 +3,66 @@ title: "PIX Refund Lifecycle"
 description: "Understand refund eligibility, idempotency, and asynchronous status changes."
 ---
 
-PIX refunds are asynchronous and account-scoped. Use the flow below instead of treating refund creation as an immediate final result.
+PIX refunds are **asynchronous** and **account-scoped**[cite: 1]. Creating a refund request initiates background processing rather than delivering an immediate final result[cite: 1].
 
-### Lifecycle
+<Note>
+  All standard API responses (including validation and business failures) return `HTTP 200` with an outer JSON envelope[cite: 1]. Always branch your business logic on the outer `code` field, not the HTTP status code[cite: 1].
+</Note>
 
-1. Call `POST /v3/refunds/pix` with the original inbound PIX settlement ID, a unique merchant order ID, and the decimal-string amount.
-2. A successful creation starts at numeric status `1` (PENDING). The service queues background processing.
-3. Poll `POST /v3/refunds/status/check` with a new signature nonce each time. This operation may refresh and persist the rail status.
-4. Stop on `2` (COMPLETED) or `3` (FAILED). Use `POST /v3/refunds/details` when the full accessible projection is needed.
+---
 
-### Eligibility implemented today
+## Refund Lifecycle Flow
 
-* The original transaction must be an inbound PIX payment owned by the selected account and still refundable.
-* It must be no more than 90 days old.
-* The amount must be positive, have at most two decimal places, and not exceed the remaining refundable amount.
-* The first six characters of `merchant_order_id` must be a valid UTC `YYMMDD` date around the current UTC day, with a ±1-hour boundary allowance.
+Follow this 4-step execution model to handle PIX refunds securely:
 
-### Idempotency and retries
+<Steps>
+  <Step title="Initiate Refund Request">
+    Call `POST /v3/refunds/pix` passing the original inbound PIX settlement ID, a unique `merchant_order_id`, and the decimal-string amount[cite: 1].
+  </Step>
+  <Step title="Pending Processing (Status 1)">
+    A successful creation returns numeric status `1` (`PENDING`)[cite: 1]. Pagsmile queues the operation for asynchronous rail execution[cite: 1].
+  </Step>
+  <Step title="Poll Refund Status">
+    Poll `POST /v3/refunds/status/check` to monitor state updates[cite: 1].
 
-The create route stores the merchant order ID for 48 hours. A duplicate returns business code `4001013`. This is separate from signature replay protection: every retry or poll still needs a fresh timestamp and nonce.
+    <Warning>
+      Each status check request **must** include a fresh `X-Timestamp` and `X-Nonce` header to pass signature validation[cite: 1].
+    </Warning>
+  </Step>
+  <Step title="Terminal State Reached">
+    Stop polling when status reaches `2` (`COMPLETED`) or `3` (`FAILED`)[cite: 1]. Use `POST /v3/refunds/details` if you require the full accessible transaction projection[cite: 1].
+  </Step>
+</Steps>
 
-All normal API results—including validation and business failures—use HTTP 200 with the JSON envelope. Branch on outer `code`, not HTTP status or localized `message`. Malformed JSON is the exception and can return raw HTTP 400 text.
+---
+
+## Eligibility Rules
+
+Before issuing a refund, verify that your request satisfies all banking and system constraints[cite: 1]:
+
+<CardGroup cols={2}>
+  <Card title="Transaction Age" color="#3B82F6" icon="calendar">
+    Must be an inbound PIX payment owned by the selected account, issued within the **last 90 days**[cite: 1].
+  </Card>
+
+  <Card title="Amount Limits" color="#10B981" icon="calculator">
+    Must be positive, have at most two decimal places, and **not exceed** the remaining refundable balance[cite: 1].
+  </Card>
+
+  <Card title="Merchant Order ID Format" color="#8B5CF6" icon="barcode">
+    The first 6 characters **must** match a valid `YYMMDD` UTC date within a ±1-hour boundary of the current UTC day[cite: 1].
+  </Card>
+
+  <Card title="Account Ownership" color="#F59E0B" icon="building-columns">
+    The original inbound transaction must belong to the account executing the refund[cite: 1].
+  </Card>
+</CardGroup>
+
+---
+
+## Idempotency & Replay Protection
+
+Understanding the distinction between API idempotency and signature security is critical:
+
+- **Merchant Order ID Deduplication:** The create endpoint retains the `merchant_order_id` for **48 hours**[cite: 1]. Submitting a duplicate order ID returns business error code `4001013`[cite: 1].
+- **Signature Replay Protection:** Deduplication is independent of request signing[cite: 1]. Every retry or status check request requires a unique `X-Nonce` and current `X-Timestamp`[cite: 1].

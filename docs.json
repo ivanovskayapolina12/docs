@@ -8,12 +8,24 @@
     "dark": "#15803D"
   },
   "navigation": {
-    "groups": [
+    "pages": [
+      "index",
       {
         "group": "Getting started",
         "pages": [
-          "index",
-          "getting-started"
+          "getting-started",
+          "pix-refund-lifecycle",
+          {
+            "group": "Webhooks",
+            "pages": [
+              "webhooks",
+              "webhooks/signature-verification",
+              "webhooks/delivery-and-retries",
+              "webhooks/transaction-webhooks",
+              "webhooks/kyb-webhooks",
+              "webhooks/med-processing-webhooks"
+            ]
+          }
         ]
       },
       {
@@ -113,32 +125,15 @@
           },
           {
             "group": "Master Accounts",
+            "hidden": true,
             "pages": [
               "api-reference/master-accounts",
               "api-reference/master-accounts/create-master-account",
               "api-reference/master-accounts/get-master-account",
               "api-reference/master-accounts/list-master-accounts",
               "api-reference/master-accounts/update-master-account"
-            ],
-            "hidden": true
+            ]
           }
-        ]
-      },
-      {
-        "group": "Webhooks",
-        "pages": [
-          "webhooks",
-          "webhooks/signature-verification",
-          "webhooks/transaction-webhooks",
-          "webhooks/kyb-webhooks",
-          "webhooks/med-processing-webhooks",
-          "webhooks/delivery-and-retries"
-        ]
-      },
-      {
-        "group": "PIX Refund Lifecycle",
-        "pages": [
-          "pix-refund-lifecycle"
         ]
       }
     ]
