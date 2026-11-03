@@ -3,56 +3,89 @@ title: "Webhooks"
 description: "Receive signed transaction, KYB, and MED event notifications."
 ---
 
-Webhooks serve as the core **real-time notification mechanism** for your financial integration. Instead of making repetitive API requests (polling) to check payment states, compliance verifications, or dispute status, Pagsmile pushes signed HTTP POST requests directly to your backend as soon as events occur.
+Webhooks serve as the core **real-time notification mechanism** for your financial integration[cite: 1]. Instead of making repetitive API requests (polling) to check payment states, compliance verifications, or dispute status, Pagsmile pushes signed HTTP POST requests directly to your backend as soon as events occur[cite: 1].
 
-### Key Business & Technical Benefits
+<CardGroup cols={3}>
+  <Card title="Instant Value Delivery" color="#10B981" icon="bolt">
+    Trigger immediate fulfillment or balance credits the moment a Pix payment is confirmed[cite: 1].
+  </Card>
 
-* **Instant Value Delivery:** Trigger immediate fulfillment or balance credits the moment a Pix payment is confirmed.
-* **Infra Efficiency:** Eliminate redundant API polling, drastically reducing infrastructure overhead and network load.
-* **Automated Operations:** Handle MED disputes and KYB compliance updates automatically via background workers.
+  <Card title="Infra Efficiency" color="#3B82F6" icon="server">
+    Eliminate redundant API polling, drastically reducing infrastructure overhead and network load.
+  </Card>
+
+  <Card title="Automated Operations" color="#8B5CF6" icon="robot">
+    Handle MED disputes and KYB compliance updates automatically via background workers[cite: 1].
+  </Card>
+</CardGroup>
+
+---
 
 ## Event Families
 
-Pagsmile categorizes webhooks into three primary domain families:
+Pagsmile categorizes webhooks into three primary domain families[cite: 1]:
 
-| **Event Family** | **Business Context** | **Supported Events** |
-| :-- | :-- | :-- |
-| **Pix Transactions** | Financial settlement notifications for inbound/outbound payments and refunds. | `PIX_PAYMENT_IN`, `PIX_PAYMENT_OUT`, `PIX_REFUND_IN`, `PIX_REFUND_OUT` |
-| **KYB Compliance** | Status updates for compliance sessions on Virtual and Master accounts. | `VA_ACCOUNT_KYB`, `MASTER_ACCOUNT_KYB` |
-| **MED Processing** | Lifecycle events for Special Refund Mechanisms (MED cases and infractions). | `MED_CASE_CREATED`, `MED_CASE_STATUS_CHANGED`, `INFRACTION_RECEIVED`, `INFRACTION_STATUS_CHANGED` |
+<CardGroup cols={1}>
+  <Card title="Pix Transactions" icon="money-bill-transfer" href="/webhooks/transactions">
+    Financial settlement notifications for inbound/outbound payments and refunds (`PIX_PAYMENT_IN`, `PIX_PAYMENT_OUT`, `PIX_REFUND_IN`, `PIX_REFUND_OUT`)[cite: 1]. **Scope:** `ACCOUNT` or `USER`[cite: 1]
+  </Card>
 
-## Webhook Provisioning: API vs. Merchant Dashboard
+  <Card title="KYB Compliance" icon="user-shield" href="/webhooks/kyb">
+    Status updates for compliance sessions on Virtual and Master accounts (`VA_ACCOUNT_KYB`, `MASTER_ACCOUNT_KYB`)[cite: 1]. **Scope:** `USER` (Virtual) / `PLATFORM` (Master)[cite: 1]
+  </Card>
 
-Management and subscription endpoints depend on the event family you are integrating:
+  <Card title="MED Processing" icon="shield-alert" href="/webhooks/med">
+    Lifecycle events for Special Refund Mechanisms (`MED_CASE_*`, `INFRACTION_*`)[cite: 1]. **Scope:** `USER` or `ACCOUNT`[cite: 1]
+  </Card>
+</CardGroup>
 
-### 1. Management API (`/v3/webhooks`)
+---
 
-Use the Management API to programmatically subscribe to transaction and KYB events. The API currently accepts numeric values `1` through `6`:
+## Webhook Provisioning
 
-- `1` — `PIX_PAYMENT_IN`
-- `2` — `PIX_PAYMENT_OUT`
-- `3` — `PIX_REFUND_IN`
-- `4` — `PIX_REFUND_OUT`
-- `5` — `VA_ACCOUNT_KYB`
-- `6` — `MASTER_ACCOUNT_KYB`
+Where and how to configure your subscriptions depend on the event family[cite: 1]:
 
-### 2. Merchant Dashboard (MED Processing)
+<Tabs>
+  <Tab title="Management API (/v3/webhooks)">
+    Programmatically subscribe to transaction and KYB events using numeric IDs[cite: 1]:
 
-> ⚠️ **Important:** The `/v3/webhooks` API does **not** support MED processing events.
+    - `1` — `PIX_PAYMENT_IN`[cite: 1]
+    - `2` — `PIX_PAYMENT_OUT`[cite: 1]
+    - `3` — `PIX_REFUND_IN`[cite: 1]
+    - `4` — `PIX_REFUND_OUT`[cite: 1]
+    - `5` — `VA_ACCOUNT_KYB`[cite: 1]
+    - `6` — `MASTER_ACCOUNT_KYB`[cite: 1]
+  </Tab>
+  <Tab title="Merchant Dashboard (MED)">
+    <Warning>
+      The `/v3/webhooks` API does **not** support MED processing events[cite: 1].
+    </Warning>
 
-To receive MED and Infraction notifications, manually configure your endpoint via the **Merchant Dashboard** under **API Keys > Webhooks > Add Webhook**:
+    Configure MED and Infraction notifications via **Merchant Dashboard**:
 
-- Select **MED PROCESSING** for case notifications.
-- Select **INFRACTION PROCESSING** for infraction notifications.
+    1. Go to **API Keys > Webhooks > Add Webhook**[cite: 1].
+    2. Select **MED PROCESSING** for cases or **INFRACTION PROCESSING** for infractions[cite: 1].
+  </Tab>
+</Tabs>
 
-## Receiver Integration Checklist
+---
 
-Ensure your webhook receiver meets all mandatory requirements before handling production traffic:
+## Receiver Checklist
 
-- \[ ] **Expose a Stable URL:** Use a permanent HTTPS endpoint. **Do not rely on HTTP redirects.** Transaction deliveries follow redirects, but KYB and MED deliveries treat redirect responses as failed acknowledgements.
-- \[ ] **Capture Raw Bytes:** Read and retain the exact raw request body in memory before parsing JSON for signature verification.
-- \[ ] **Validate Headers:** Verify both `X-Content-Hash` and `X-Signature` before processing the JSON payload.
-- \[ ] **Prevent Replay Attacks:** Enforce timestamp freshness and reject replayed nonces.
-- \[ ] **Enforce Idempotency:** Persist the event using its documented idempotency key (`delivery_id` or `txn_id` + event type) before processing.
-- \[ ] **Acknowledge Fast:** Return an explicit `HTTP 200` status code immediately upon accepting the payload.
-- \[ ] **Asynchronous Processing:** Offload processing to background job queues to tolerate out-of-order or duplicate deliveries.
+<Steps>
+  <Step title="Expose a Stable URL">
+    Use a permanent HTTPS endpoint[cite: 1]. **Do not rely on HTTP redirects.**[cite: 1]
+  </Step>
+  <Step title="Capture Raw Bytes">
+    Read and retain the exact raw request body in memory before parsing JSON for signature verification[cite: 1].
+  </Step>
+  <Step title="Validate Headers">
+    Verify both `X-Content-Hash` and `X-Signature` before processing the JSON payload[cite: 1].
+  </Step>
+  <Step title="Enforce Idempotency">
+    Persist the event using its documented idempotency key (`delivery_id` or `txn_id` + event type)[cite: 1].
+  </Step>
+  <Step title="Acknowledge Fast">
+    Return an explicit `HTTP 200` status code immediately upon accepting the payload[cite: 1].
+  </Step>
+</Steps>
