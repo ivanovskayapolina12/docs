@@ -3,109 +3,223 @@ title: "Transaction Webhooks"
 description: "Receive incoming and outgoing Pix payment and refund updates."
 ---
 
-Transaction webhooks report Pix payments and refunds from the perspective of the configured account or user.
-
-### Events
-
-| Event             | Meaning              | Payload type    |
-| ----------------- | -------------------- | --------------- |
-| `PIX_PAYMENT_IN`  | Incoming Pix payment | Payment details |
-| `PIX_PAYMENT_OUT` | Outgoing Pix payment | Payment details |
-| `PIX_REFUND_IN`   | Incoming Pix refund  | Refund details  |
-| `PIX_REFUND_OUT`  | Outgoing Pix refund  | Refund details  |
-
 The payer receives the `OUT` event and the payee receives the `IN` event. A failed transaction does not generate the payee-side `IN` delivery.
 
-### Delivery models
+---
 
-| Scope   | Endpoint selection                                                | `delivery_id`                      |
-| ------- | ----------------------------------------------------------------- | ---------------------------------- |
-| ACCOUNT | Active configuration matching the event, ISPB, and account number | Not included                       |
-| USER    | Active subscription owned by the resolved user                    | Included and stable across retries |
+## Events
 
-The transaction body does not contain a top-level `event_type`. Determine the event from `txn_type` and `flow_direction` together with the callback configuration that targets the endpoint.
+| Event | Meaning | Payload Type |
+| :-- | :-- | :-- |
+| `PIX_PAYMENT_IN` | Incoming Pix payment | Payment details |
+| `PIX_PAYMENT_OUT` | Outgoing Pix payment | Payment details |
+| `PIX_REFUND_IN` | Incoming Pix refund | Refund details |
+| `PIX_REFUND_OUT` | Outgoing Pix refund | Refund details |
 
-### Serialization rules
+---
 
-* Field names use `snake_case`.
-* Unset and default-valued fields are omitted.
-* Enum values are JSON strings such as `TXN_STATUS_COMPLETED`.
-* `int64` timestamp fields are decimal JSON strings, such as `"1710000000000"`.
-* Money values are decimal strings. Do not parse them as floating-point numbers.
-* Top-level `credit_fee` and `debit_fee` are removed before delivery.
-* `payer.document_id` and `payee.document_id` may be masked.
-* Ignore unknown fields so additive payload changes do not break your receiver.
+## Delivery Models
 
-### Common fields
+| Scope | Endpoint Selection | `delivery_id` |
+| :-- | :-- | :-- |
+| **ACCOUNT** | Active configuration matching the event, ISPB, and account number | Not included |
+| **USER** | Active subscription owned by the resolved user | Included and stable across retries |
 
-| Group          | Fields                                                                                        |
-| -------------- | --------------------------------------------------------------------------------------------- |
-| Parties        | `payer`, `payee`                                                                              |
-| Identifiers    | `txn_id`, `settlement_txn_id`, `merchant_order_id`                                            |
-| State          | `txn_status`, `rejection_reason`, `error`, `result`                                           |
-| Money          | `amount`, `currency`, `refunded_amount`, `refundable_amount`                                  |
-| Classification | `txn_type`, `payment_method`, `payment_variant`, `source_type`, `flow_type`, `flow_direction` |
-| Context        | `memo`, `request_memo`, `request_merchant_order_id`, `pix_details`                            |
-| Time           | `created_at`, `completed_at`                                                                  |
-| Refund only    | `refund_reason_code`, `refund_reason`, `original_txn`                                         |
+<Note>
+  The transaction body does not contain a top-level `event_type`. Determine the event from `txn_type` and `flow_direction` together with the callback configuration that targets the endpoint.
+</Note>
+
+---
+
+## Serialization Rules
+
+- Field names use `snake_case`.
+- Unset and default-valued fields are omitted.
+- Enum values are JSON strings such as `TXN_STATUS_COMPLETED`.
+- `int64` timestamp fields are decimal JSON strings, such as `"1710000000000"`.
+- Money values are decimal strings. Do not parse them as floating-point numbers.
+- Top-level `credit_fee` and `debit_fee` are removed before delivery.
+- `payer.document_id` and `payee.document_id` may be masked.
+- Ignore unknown fields so additive payload changes do not break your receiver.
+
+---
+
+## Common Fields
+
+<table>
+  <colgroup>
+    <col width="154" />
+    <col width="554" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Group</th>
+      <th>Fields</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>**Parties**</td>
+      <td>`payer`, `payee`</td>
+    </tr>
+    <tr>
+      <td>**Identifiers**</td>
+      <td>`txn_id`, `settlement_txn_id`, `merchant_order_id`</td>
+    </tr>
+    <tr>
+      <td>**State**</td>
+      <td>`txn_status`, `rejection_reason`, `error`, `result`</td>
+    </tr>
+    <tr>
+      <td>**Money**</td>
+      <td>`amount`, `currency`, `refunded_amount`, `refundable_amount`</td>
+    </tr>
+    <tr>
+      <td>**Classification**</td>
+      <td>`txn_type`, `payment_method`, `payment_variant`, `source_type`, `flow_type`, `flow_direction`</td>
+    </tr>
+    <tr>
+      <td>**Context**</td>
+      <td>`memo`, `request_memo`, `request_merchant_order_id`, `pix_details`</td>
+    </tr>
+    <tr>
+      <td>**Time**</td>
+      <td>`created_at`, `completed_at`</td>
+    </tr>
+    <tr>
+      <td>**Refund only**</td>
+      <td>`refund_reason_code`, `refund_reason`, `original_txn`</td>
+    </tr>
+  </tbody>
+</table>
+
+### Party Object (Payer / Payee)
 
 A `payer` or `payee` object may contain:
 
-| Field               | Type        |
-| ------------------- | ----------- |
-| `name`              | string      |
-| `document_id`       | string      |
-| `document_type`     | enum string |
-| `bank_account`      | string      |
-| `bank_account_type` | enum string |
-| `bank_branch`       | string      |
-| `bank_code`         | string      |
-| `bank_name`         | string      |
+<table>
+  <colgroup>
+    <col width="335" />
+    <col width="375" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`name`</td>
+      <td>`string`</td>
+    </tr>
+    <tr>
+      <td>`document_id`</td>
+      <td>`string`</td>
+    </tr>
+    <tr>
+      <td>`document_type`</td>
+      <td>`enum string`</td>
+    </tr>
+    <tr>
+      <td>`bank_account`</td>
+      <td>`string`</td>
+    </tr>
+    <tr>
+      <td>`bank_account_type`</td>
+      <td>`enum string`</td>
+    </tr>
+    <tr>
+      <td>`bank_branch`</td>
+      <td>`string`</td>
+    </tr>
+    <tr>
+      <td>`bank_code`</td>
+      <td>`string`</td>
+    </tr>
+    <tr>
+      <td>`bank_name`</td>
+      <td>`string`</td>
+    </tr>
+  </tbody>
+</table>
 
-### Direction-specific order IDs
+---
 
-| Event            | Current behavior                                                                                                                                                                                            |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PIX_PAYMENT_IN` | `merchant_order_id` is populated from `request_merchant_order_id`.                                                                                                                                          |
-| `PIX_REFUND_IN`  | The top-level refund `merchant_order_id` is omitted. `original_txn.merchant_order_id` keeps the original payment merchant order ID. `original_txn.qr_code_merchant_order_id` is omitted.                    |
-| `PIX_REFUND_OUT` | The top-level refund `merchant_order_id` is retained. `original_txn.merchant_order_id` receives the original QR-code merchant order ID when available. `original_txn.qr_code_merchant_order_id` is omitted. |
+## Direction-Specific Order IDs
 
-### USER delivery example
+<table>
+  <colgroup>
+    <col width="140" />
+    <col width="577" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Event</th>
+      <th>Current Behavior</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`PIX_PAYMENT_IN`</td>
+      <td>`merchant_order_id` is populated from `request_merchant_order_id`.</td>
+    </tr>
+    <tr>
+      <td>`PIX_REFUND_IN`</td>
+      <td>The top-level refund `merchant_order_id` is omitted. `original_txn.merchant_order_id` keeps the original payment merchant order ID. `original_txn.qr_code_merchant_order_id` is omitted.</td>
+    </tr>
+    <tr>
+      <td>`PIX_REFUND_OUT`</td>
+      <td>The top-level refund `merchant_order_id` is retained. `original_txn.merchant_order_id` receives the original QR-code merchant order ID when available. `original_txn.qr_code_merchant_order_id` is omitted.</td>
+    </tr>
+  </tbody>
+</table>
 
-```json
-{
-  "delivery_id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "payee": {
-    "name": "Demo Merchant",
-    "bank_account": "00012345",
-    "bank_code": "12345678"
-  },
-  "payer": {
-    "name": "Demo Payer",
-    "bank_account": "00098765",
-    "bank_code": "87654321"
-  },
-  "txn_id": "PIX-PAY-IN-001",
-  "settlement_txn_id": "SET-PAY-IN-001",
-  "merchant_order_id": "ORDER-IN-001",
-  "request_merchant_order_id": "ORDER-IN-001",
-  "txn_status": "TXN_STATUS_COMPLETED",
-  "source_type": "SOURCE_TYPE_API",
-  "amount": "100.00",
-  "currency": "BRL",
-  "txn_type": "TXN_TYPE_PAYMENT",
-  "payment_method": "PAYMENT_METHOD_PIX",
-  "created_at": "1710000000000",
-  "completed_at": "1710000005000",
-  "flow_type": "FLOW_TYPE_IN",
-  "flow_direction": "FLOW_DIRECTION_IN"
-}
-```
+---
 
-An ACCOUNT delivery uses the same transaction object without `delivery_id`.
+## Payload Example
 
-### Idempotency
+<Tabs>
+  <Tab title="USER Delivery">
+    ```json
+    {
+      "delivery_id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "payee": {
+        "name": "Demo Merchant",
+        "bank_account": "00012345",
+        "bank_code": "12345678"
+      },
+      "payer": {
+        "name": "Demo Payer",
+        "bank_account": "00098765",
+        "bank_code": "87654321"
+      },
+      "txn_id": "PIX-PAY-IN-001",
+      "settlement_txn_id": "SET-PAY-IN-001",
+      "merchant_order_id": "ORDER-IN-001",
+      "request_merchant_order_id": "ORDER-IN-001",
+      "txn_status": "TXN_STATUS_COMPLETED",
+      "source_type": "SOURCE_TYPE_API",
+      "amount": "100.00",
+      "currency": "BRL",
+      "txn_type": "TXN_TYPE_PAYMENT",
+      "payment_method": "PAYMENT_METHOD_PIX",
+      "created_at": "1710000000000",
+      "completed_at": "1710000005000",
+      "flow_type": "FLOW_TYPE_IN",
+      "flow_direction": "FLOW_DIRECTION_IN"
+    }
+    ```
+  </Tab>
+  <Tab title="ACCOUNT Delivery">
+    An `ACCOUNT` delivery uses the same transaction object without `delivery_id`.
+  </Tab>
+</Tabs>
 
-* When `delivery_id` is present, use it as the primary idempotency key.
-* For ACCOUNT delivery, use `txn_id` together with the configured event type.
-* A duplicate event must return HTTP `200` after confirming that the original event was already accepted.
+---
+
+## Idempotency
+
+- When `delivery_id` is present, use it as the primary idempotency key.
+- For `ACCOUNT` delivery, use `txn_id` together with the configured event type.
+- A duplicate event must return `HTTP 200` after confirming that the original event was already accepted.

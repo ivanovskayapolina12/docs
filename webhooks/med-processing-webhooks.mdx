@@ -8,191 +8,294 @@ MED processing webhooks report case and infraction lifecycle changes through a c
 Receiving these events requires an active subscription for the intended owner and event type.
 
 <Warning>
-  The ordinary [Create Webhook](/api-reference/webhook-management/create-webhook) endpoint does not accept `MED_PROCESSING`. The event names below describe delivered MED payloads; they are not additional values for the ordinary subscription API. Create the subscription in the **Merchant Dashboard**. OpenAPI does not currently support creating these subscriptions.
+  The ordinary Create Webhook endpoint does **not** accept `MED_PROCESSING`. The event names below describe delivered MED payloads; they are not additional values for the ordinary subscription API. Create the subscription in the **Merchant Dashboard**. OpenAPI does not currently support creating these subscriptions.
 </Warning>
 
-### Configure delivery in the Merchant Dashboard
+---
+
+## Configure Delivery in the Merchant Dashboard
 
 <Steps>
   <Step title="Open webhook settings">
-    In the Merchant Dashboard, select **API Keys**. On the **API Keys and Webhooks** page, find **Webhooks** and click **Add Webhook**.
+    In the Merchant Dashboard, select **API Keys**. On the API Keys and Webhooks page, find **Webhooks** and click **Add Webhook**.
   </Step>
   <Step title="Select the application and event type">
-    Select the intended **App ID**. For **Event Type**, select **MED PROCESSING** for MED case notifications or **INFRACTION PROCESSING** for infraction notifications. These are dashboard labels; the payload event names are listed in [Events](#events).
+    Select the intended App ID. For Event Type, select **MED PROCESSING** for MED case notifications or **INFRACTION PROCESSING** for infraction notifications. These are dashboard labels; the payload event names are listed in Events.
   </Step>
   <Step title="Save the callback endpoint">
-    Enter your receiver's **Callback URL**, select **application/json** for **Content Type**, and click **Confirm**. Check that the subscription appears in the **Webhooks** list with status **Active**. If you need both event types, add a subscription for each.
+    Enter your receiver's Callback URL, select `application/json` for Content Type, and click **Confirm**. Check that the subscription appears in the Webhooks list with status Active. If you need both event types, add a subscription for each.
   </Step>
 </Steps>
 
-An active subscription confirms configuration, not successful delivery. Implement [Signature Verification](/webhooks/signature-verification) and [Delivery and Retries](/webhooks/delivery-and-retries) in your receiver.
+<Note>
+  An active subscription confirms configuration, not successful delivery. Implement Signature Verification and Delivery and Retries in your receiver.
+</Note>
 
-### Subscription scopes
+---
 
-| Scope   | Matching rule                                                   |
-| ------- | --------------------------------------------------------------- |
-| USER    | Matches `user_id`; the subscription does not target an account. |
-| ACCOUNT | Matches the exact owner ISPB and account number.                |
+## Subscription Scopes
 
-One source event can create separate USER and ACCOUNT deliveries. Each matching subscription receives its own `delivery_id`. The callback exposes `subscription_scope` but does not expose the owner identifiers.
+<table>
+  <colgroup>
+    <col width="105" />
+    <col width="611" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Scope</th>
+      <th>Matching Rule</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>**USER**</td>
+      <td>Matches `user_id`; the subscription does not target an account.</td>
+    </tr>
+    <tr>
+      <td>**ACCOUNT**</td>
+      <td>Matches the exact owner ISPB and account number.</td>
+    </tr>
+  </tbody>
+</table>
 
-### Events
+One source event can create separate `USER` and `ACCOUNT` deliveries. Each matching subscription receives its own `delivery_id`. The callback exposes `subscription_scope` but does not expose the owner identifiers.
 
-| `event_type`                | Trigger                                             |
-| --------------------------- | --------------------------------------------------- |
-| `MED_CASE_CREATED`          | A case is created with a valid owner.               |
-| `MED_CASE_STATUS_CHANGED`   | An existing case moves to a different status.       |
-| `INFRACTION_RECEIVED`       | A new infraction is stored for an owned payer case. |
-| `INFRACTION_STATUS_CHANGED` | An existing infraction moves to a different status. |
+---
 
-A status-change event is not created when the status value is unchanged.
+## Events
 
-### Envelope
+<table>
+  <colgroup>
+    <col width="218" />
+    <col width="495" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>`event_type`</th>
+      <th>Trigger</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`MED_CASE_CREATED`</td>
+      <td>A case is created with a valid owner.</td>
+    </tr>
+    <tr>
+      <td>`MED_CASE_STATUS_CHANGED`</td>
+      <td>An existing case moves to a different status.</td>
+    </tr>
+    <tr>
+      <td>`INFRACTION_RECEIVED`</td>
+      <td>A new infraction is stored for an owned payer case.</td>
+    </tr>
+    <tr>
+      <td>`INFRACTION_STATUS_CHANGED`</td>
+      <td>An existing infraction moves to a different status.</td>
+    </tr>
+  </tbody>
+</table>
 
-| Field                | Type   | Description                                                                          |
-| -------------------- | ------ | ------------------------------------------------------------------------------------ |
-| `delivery_id`        | string | Stable 64-character lowercase hexadecimal identifier for this subscription delivery. |
-| `event_id`           | string | Stable identifier of the source event. Treat it as opaque.                           |
-| `event_type`         | string | One of the four MED event types.                                                     |
-| `event_version`      | string | Payload contract version; currently `1.0`.                                           |
-| `subscription_scope` | string | `USER` or `ACCOUNT`.                                                                 |
-| `occurred_at`        | number | Event time as Unix milliseconds.                                                     |
-| `resource_id`        | string | Case or infraction resource identifier.                                              |
-| `resource_version`   | number | Version of the resource snapshot.                                                    |
-| `data`               | object | Case or infraction snapshot.                                                         |
+<Note>
+  A status-change event is not created when the status value is unchanged.
+</Note>
 
-### Case status-change example
+---
 
-```json
-{
-  "delivery_id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "event_id": "med-case:case_demo_001:v2",
-  "event_type": "MED_CASE_STATUS_CHANGED",
-  "event_version": "1.0",
-  "subscription_scope": "ACCOUNT",
-  "occurred_at": 1710000000123,
-  "resource_id": "case_demo_001",
-  "resource_version": 2,
-  "data": {
-    "case_id": "case_demo_001",
-    "transaction_id": "txn_demo_001",
-    "root_end_to_end_id": "E1234567820240101000000000000001",
-    "status": "AWAITING_ANALYSIS",
-    "previous_status": "CREATED",
-    "requested_amount": "100.00",
-    "blocked_amount_total": "100.00",
-    "returned_amount_total": "0.00",
-    "currency": "BRL",
-    "flow_type": "AUTOMATED",
-    "created_at": 1710000000000,
-    "updated_at": 1710000000123,
-    "analysis_deadline": 1710086400000,
-    "manual_refund_deadline": 1710172800000
-  }
-}
-```
+## Envelope Schema
 
-### Case data
+<table>
+  <colgroup>
+    <col width="168" />
+    <col width="100" />
+    <col width="443" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`delivery_id`</td>
+      <td>`string`</td>
+      <td>Stable 64-character lowercase hexadecimal identifier for this subscription delivery.</td>
+    </tr>
+    <tr>
+      <td>`event_id`</td>
+      <td>`string`</td>
+      <td>Stable identifier of the source event. Treat it as opaque.</td>
+    </tr>
+    <tr>
+      <td>`event_type`</td>
+      <td>`string`</td>
+      <td>One of the four MED event types.</td>
+    </tr>
+    <tr>
+      <td>`event_version`</td>
+      <td>`string`</td>
+      <td>Payload contract version; currently `1.0`.</td>
+    </tr>
+    <tr>
+      <td>`subscription_scope`</td>
+      <td>`string`</td>
+      <td>`USER` or `ACCOUNT`.</td>
+    </tr>
+    <tr>
+      <td>`occurred_at`</td>
+      <td>`number`</td>
+      <td>Event time as Unix milliseconds.</td>
+    </tr>
+    <tr>
+      <td>`resource_id`</td>
+      <td>`string`</td>
+      <td>Case or infraction resource identifier.</td>
+    </tr>
+    <tr>
+      <td>`resource_version`</td>
+      <td>`number`</td>
+      <td>Version of the resource snapshot.</td>
+    </tr>
+    <tr>
+      <td>`data`</td>
+      <td>`object`</td>
+      <td>Case or infraction snapshot.</td>
+    </tr>
+  </tbody>
+</table>
 
-Case events contain:
+---
 
-* `case_id`
-* `transaction_id`
-* `root_end_to_end_id`
-* `status`
-* `previous_status` for a status change
-* `requested_amount`
-* `blocked_amount_total`
-* `returned_amount_total`
-* `currency`
-* `flow_type`
-* `created_at`
-* `updated_at`
-* `analysis_deadline`
-* `manual_refund_deadline`
+## Resource Types & Statuses
 
-Case `status` values are:
+<AccordionGroup>
+  <Accordion title={"Case Data & Statuses"}>
+    **Case events contain:**
 
-* `CREATED`
-* `TRACKED`
-* `AWAITING_ANALYSIS`
-* `ANALYZED`
-* `RETURN_PROCESSING`
-* `COMPLETED`
-* `CANCELLED`
-* `FAILED`
+    - `case_id`
+    - `transaction_id`
+    - `root_end_to_end_id`
+    - `status`
+    - `previous_status` (for a status change)
+    - `requested_amount`
+    - `blocked_amount_total`
+    - `returned_amount_total`
+    - `currency`
+    - `flow_type`
+    - `created_at`
+    - `updated_at`
+    - `analysis_deadline`
+    - `manual_refund_deadline`
 
-`flow_type` values are `UNSPECIFIED`, `AUTOMATED`, or `MANUAL`.
+    **Case status values:** `CREATED`, `TRACKED`, `AWAITING_ANALYSIS`, `ANALYZED`, `RETURN_PROCESSING`, `COMPLETED`, `CANCELLED`, `FAILED`.
 
-### Infraction status-change example
+    **`flow_type` values:** `UNSPECIFIED`, `AUTOMATED`, `MANUAL`.
+  </Accordion>
 
-```json
-{
-  "delivery_id": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-  "event_id": "med-infraction:infraction_demo_001:v3",
-  "event_type": "INFRACTION_STATUS_CHANGED",
-  "event_version": "1.0",
-  "subscription_scope": "USER",
-  "occurred_at": 1710000200123,
-  "resource_id": "infraction_demo_001",
-  "resource_version": 3,
-  "data": {
-    "case_id": "case_demo_001",
-    "infraction_id": "infraction_demo_001",
-    "dict_infraction_id": "dict_infraction_demo_001",
-    "root_end_to_end_id": "E1234567820240101000000000000001",
-    "status": "CLOSED_AGREED",
-    "previous_status": "ANALYSIS_PENDING",
-    "requested_amount": "100.00",
-    "blocked_amount": "100.00",
-    "currency": "BRL",
-    "analysis_result": "AGREED",
-    "received_at": 1710000000000,
-    "sla_deadline": 1710086400000,
-    "closed_at": 1710000200123
-  }
-}
-```
+  <Accordion title={"Infraction Data & Statuses"}>
+    **Infraction events contain:**
 
-### Infraction data
+    - `case_id`
+    - `infraction_id`
+    - `dict_infraction_id`
+    - `root_end_to_end_id`
+    - `status`
+    - `previous_status` (for a status change)
+    - `requested_amount`
+    - `blocked_amount`
+    - `currency`
+    - `analysis_result`
+    - `received_at`
+    - `sla_deadline`
+    - `closed_at`
 
-Infraction events contain:
+    **Infraction status values:** `RECEIVED`, `BLOCKING_PENDING`, `BLOCKED`, `ANALYSIS_PENDING`, `CLOSED_AGREED`, `CLOSED_DISAGREED`, `CANCELLED`, `FAILED`.
 
-* `case_id`
-* `infraction_id`
-* `dict_infraction_id`
-* `root_end_to_end_id`
-* `status`
-* `previous_status` for a status change
-* `requested_amount`
-* `blocked_amount`
-* `currency`
-* `analysis_result`
-* `received_at`
-* `sla_deadline`
-* `closed_at`
+    **`analysis_result` values:** `UNSPECIFIED`, `AGREED`, `DISAGREED`.
+  </Accordion>
+</AccordionGroup>
 
-Infraction `status` values are:
+<Note>
+  All MED amount fields are decimal strings. MED timestamps are JSON numbers containing Unix milliseconds. `previous_status` is omitted when it does not apply. Ignore unknown fields so additive payload changes do not break your receiver.
+</Note>
 
-* `RECEIVED`
-* `BLOCKING_PENDING`
-* `BLOCKED`
-* `ANALYSIS_PENDING`
-* `CLOSED_AGREED`
-* `CLOSED_DISAGREED`
-* `CANCELLED`
-* `FAILED`
+---
 
-`analysis_result` values are `UNSPECIFIED`, `AGREED`, or `DISAGREED`.
+## Payload Examples
 
-All MED amount fields are decimal strings. MED timestamps are JSON numbers containing Unix milliseconds. `previous_status` is omitted when it does not apply. Ignore unknown fields so additive payload changes do not break your receiver.
+<Tabs>
+  <Tab title="Case Status-Change Example">
+    ```json
+    {
+      "delivery_id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "event_id": "med-case:case_demo_001:v2",
+      "event_type": "MED_CASE_STATUS_CHANGED",
+      "event_version": "1.0",
+      "subscription_scope": "ACCOUNT",
+      "occurred_at": 1710000000123,
+      "resource_id": "case_demo_001",
+      "resource_version": 2,
+      "data": {
+        "case_id": "case_demo_001",
+        "transaction_id": "txn_demo_001",
+        "root_end_to_end_id": "E1234567820240101000000000000001",
+        "status": "AWAITING_ANALYSIS",
+        "previous_status": "CREATED",
+        "requested_amount": "100.00",
+        "blocked_amount_total": "100.00",
+        "returned_amount_total": "0.00",
+        "currency": "BRL",
+        "flow_type": "AUTOMATED",
+        "created_at": 1710000000000,
+        "updated_at": 1710000000123,
+        "analysis_deadline": 1710086400000,
+        "manual_refund_deadline": 1710172800000
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Infraction Status-Change Example">
+    ```json
+    {
+      "delivery_id": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "event_id": "med-infraction:infraction_demo_001:v3",
+      "event_type": "INFRACTION_STATUS_CHANGED",
+      "event_version": "1.0",
+      "subscription_scope": "USER",
+      "occurred_at": 1710000200123,
+      "resource_id": "infraction_demo_001",
+      "resource_version": 3,
+      "data": {
+        "case_id": "case_demo_001",
+        "infraction_id": "infraction_demo_001",
+        "dict_infraction_id": "dict_infraction_demo_001",
+        "root_end_to_end_id": "E1234567820240101000000000000001",
+        "status": "CLOSED_AGREED",
+        "previous_status": "ANALYSIS_PENDING",
+        "requested_amount": "100.00",
+        "blocked_amount": "100.00",
+        "currency": "BRL",
+        "analysis_result": "AGREED",
+        "received_at": 1710000000000,
+        "sla_deadline": 1710086400000,
+        "closed_at": 1710000200123
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
 
-### Ordering and idempotency
+---
 
-* Use `delivery_id` as the delivery idempotency key.
-* The same `event_id` sent to different subscriptions has different `delivery_id` values.
-* Deliveries are at least once and are not globally ordered.
-* Use `resource_id` and `resource_version` to reject stale snapshots.
-* Do not derive business meaning by parsing `event_id`.
+## Ordering and Idempotency
 
-See Delivery and Retries for acknowledgement and retry behavior.
+- Use `delivery_id` as the delivery idempotency key.
+- The same `event_id` sent to different subscriptions has different `delivery_id` values.
+- Deliveries are at least once and are not globally ordered.
+- Use `resource_id` and `resource_version` to reject stale snapshots.
+- Do not derive business meaning by parsing `event_id`.
+
+<Note>
+  See **Delivery and Retries** for acknowledgement and retry behavior.
+</Note>
