@@ -3,11 +3,11 @@ title: "Webhooks"
 description: "Receive signed transaction, KYB, and MED event notifications."
 ---
 
-Webhooks serve as the core **real-time notification mechanism** for your financial integration[cite: 1]. Instead of making repetitive API requests (polling) to check payment states, compliance verifications, or dispute status, Pagsmile pushes signed HTTP POST requests directly to your backend as soon as events occur[cite: 1].
+Webhooks serve as the core **real-time notification mechanism** for your financial integration. Instead of making repetitive API requests (polling) to check payment states, compliance verifications, or dispute status, Pagsmile pushes signed HTTP POST requests directly to your backend as soon as events occur.
 
 <CardGroup cols={3}>
   <Card title="Instant Value Delivery" color="#10B981" icon="bolt">
-    Trigger immediate fulfillment or balance credits the moment a Pix payment is confirmed[cite: 1].
+    Trigger immediate fulfillment or balance credits the moment a Pix payment is confirmed.
   </Card>
 
   <Card title="Infra Efficiency" color="#3B82F6" icon="server">
@@ -15,7 +15,7 @@ Webhooks serve as the core **real-time notification mechanism** for your financi
   </Card>
 
   <Card title="Automated Operations" color="#8B5CF6" icon="robot">
-    Handle MED disputes and KYB compliance updates automatically via background workers[cite: 1].
+    Handle MED disputes and KYB compliance updates automatically via background workers.
   </Card>
 </CardGroup>
 
@@ -23,19 +23,25 @@ Webhooks serve as the core **real-time notification mechanism** for your financi
 
 ## Event Families
 
-Pagsmile categorizes webhooks into three primary domain families[cite: 1]:
+Pagsmile categorizes webhooks into three primary domain families:
 
 <CardGroup cols={1}>
   <Card title="Pix Transactions" icon="money-bill-transfer" href="/webhooks/transactions">
-    Financial settlement notifications for inbound/outbound payments and refunds (`PIX_PAYMENT_IN`, `PIX_PAYMENT_OUT`, `PIX_REFUND_IN`, `PIX_REFUND_OUT`)[cite: 1]. **Scope:** `ACCOUNT` or `USER`[cite: 1]
+    Financial settlement notifications for inbound/outbound payments and refunds (`PIX_PAYMENT_IN`, `PIX_PAYMENT_OUT`, `PIX_REFUND_IN`, `PIX_REFUND_OUT`) 
+
+    **Scope:** `ACCOUNT` or `USER`
   </Card>
 
   <Card title="KYB Compliance" icon="user-shield" href="/webhooks/kyb">
-    Status updates for compliance sessions on Virtual and Master accounts (`VA_ACCOUNT_KYB`, `MASTER_ACCOUNT_KYB`)[cite: 1]. **Scope:** `USER` (Virtual) / `PLATFORM` (Master)[cite: 1]
+    Status updates for compliance sessions on Virtual and Master accounts (`VA_ACCOUNT_KYB`, `MASTER_ACCOUNT_KYB`).
+
+     **Scope:**  `PLATFORM` (Master) / `USER` (Virtual)
   </Card>
 
-  <Card title="MED Processing" icon="shield-alert" href="/webhooks/med">
-    Lifecycle events for Special Refund Mechanisms (`MED_CASE_*`, `INFRACTION_*`)[cite: 1]. **Scope:** `USER` or `ACCOUNT`[cite: 1]
+  <Card title="MED Processing" icon="sensor-alert" href="/webhooks/med">
+    Lifecycle events for Special Refund Mechanisms (`MED_CASE_*`, `INFRACTION_*`). 
+
+    **Scope:** `USER` or `ACCOUNT`
   </Card>
 </CardGroup>
 
@@ -43,7 +49,7 @@ Pagsmile categorizes webhooks into three primary domain families[cite: 1]:
 
 ## Webhook Provisioning
 
-Where and how to configure your subscriptions depend on the event family[cite: 1]:
+Where and how to configure your subscriptions depend on the event family:
 
 <Tabs>
   <Tab title="Management API (/v3/webhooks)">
@@ -58,13 +64,13 @@ Where and how to configure your subscriptions depend on the event family[cite: 1
   </Tab>
   <Tab title="Merchant Dashboard (MED)">
     <Warning>
-      The `/v3/webhooks` API does **not** support MED processing events[cite: 1].
+      The `/v3/webhooks` API does **not** support MED processing events.
     </Warning>
 
     Configure MED and Infraction notifications via **Merchant Dashboard**:
 
-    1. Go to **API Keys > Webhooks > Add Webhook**[cite: 1].
-    2. Select **MED PROCESSING** for cases or **INFRACTION PROCESSING** for infractions[cite: 1].
+    1. Go to **API Keys > Webhooks > Add Webhook**.
+    2. Select **MED PROCESSING** for cases or **INFRACTION PROCESSING** for infractions.
   </Tab>
 </Tabs>
 
@@ -74,18 +80,18 @@ Where and how to configure your subscriptions depend on the event family[cite: 1
 
 <Steps>
   <Step title="Expose a Stable URL">
-    Use a permanent HTTPS endpoint[cite: 1]. **Do not rely on HTTP redirects.**[cite: 1]
+    Use a permanent HTTPS endpoint. **Do not rely on HTTP redirects.**
   </Step>
   <Step title="Capture Raw Bytes">
-    Read and retain the exact raw request body in memory before parsing JSON for signature verification[cite: 1].
+    Read and retain the exact raw request body in memory before parsing JSON for signature verification.
   </Step>
   <Step title="Validate Headers">
-    Verify both `X-Content-Hash` and `X-Signature` before processing the JSON payload[cite: 1].
+    Verify both `X-Content-Hash` and `X-Signature` before processing the JSON payload.
   </Step>
   <Step title="Enforce Idempotency">
-    Persist the event using its documented idempotency key (`delivery_id` or `txn_id` + event type)[cite: 1].
+    Persist the event using its documented idempotency key (`delivery_id` or `txn_id` + event type).
   </Step>
   <Step title="Acknowledge Fast">
-    Return an explicit `HTTP 200` status code immediately upon accepting the payload[cite: 1].
+    Return an explicit `HTTP 200` status code immediately upon accepting the payload.
   </Step>
 </Steps>
