@@ -9,6 +9,7 @@
   },
   "navigation": {
     "pages": [
+      "welcome-to-pagsmile",
       "index",
       {
         "group": "Getting started",

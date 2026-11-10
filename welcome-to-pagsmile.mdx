@@ -1,0 +1,136 @@
+---
+title: "Welcome to Pagsmile "
+---
+
+### **Pagsmile overview**
+
+Pagsmile Open API integrates account and payment services into your systems. You can use the API to create managed accounts, query bank account information, manage Pix keys, and initiate payments and refunds. You can track the results through query endpoints and event notifications.
+
+Operations use POST requests, JSON request bodies, and AK/SK signature authentication. Account permissions depend on the credential type, account ownership, and target account.
+
+### **Intended audience**
+
+Open API is designed for businesses and platforms that manage accounts, collections, payments, and transaction results in their own systems. You can manage your own Master Account and, when authorized, create VA or PA accounts for other entities and manage their account details and transactions separately.
+
+Onboarding, account fund operations, and event subscriptions use different authorization scopes. Configure the credentials required for each capability before integrating.
+
+[Understand MA, MOR, VA, and PA capabilities](/account-models-and-capabilities)
+
+### Product Capabilities
+
+<table>
+  <colgroup>
+    <col width="249" />
+    <col width="461" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>**Capability**</th>
+      <th>**Supported Features**</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Account Opening & Management</td>
+      <td>MOR, VA, and PA account creation and inquiry</td>
+    </tr>
+    <tr>
+      <td>Account & Funds Inquiry</td>
+      <td>Bank account information, balances, frozen amounts, fee and limit configurations, and transaction history</td>
+    </tr>
+    <tr>
+      <td>Pix Key Management</td>
+      <td>Create, retrieve active Pix Keys associated with an account, and delete Pix Keys</td>
+    </tr>
+    <tr>
+      <td>Payment Collection</td>
+      <td>Generate dynamic and static Pix QR Codes, retrieve QR Code details, and query Pix incoming payment details</td>
+    </tr>
+    <tr>
+      <td>Payments & Transfers</td>
+      <td>Pix key payments, Pix QR code payments, Pix payments using bank account details, TED payments using bank account details, and internal transfers within the same institution</td>
+    </tr>
+    <tr>
+      <td>Refunds</td>
+      <td>Refund original Pix incoming payments, retrieve refund details, and check refund status</td>
+    </tr>
+    <tr>
+      <td>Dispute handling</td>
+      <td>MED case creation, queries, and cancellation when eligible; infraction report queries</td>
+    </tr>
+    <tr>
+      <td>Event Notifications</td>
+      <td>Manage webhook subscriptions for Pix incoming and outgoing</td>
+    </tr>
+  </tbody>
+</table>
+
+![Image](/images/image-6.png "Image")
+
+How accounts relate to payment features:
+
+- After account opening, confirm the account's compliance status and bank account readiness. Then use the account services and payment capabilities that have been enabled.
+- Use the target account's authorization context for incoming payments, outgoing payments, and account queries. Account ownership does not mean balances are automatically aggregated.
+- Pix refunds link to the original incoming payment transaction. MED cases must also link to the original Pix transaction. Each must meet its own conditions. Connecting lines indicate relationships between operations, not call sequence or cardinality.
+- Webhooks notify you of changes based on the subscribed event types and scopes. Use them with detail, status, and statement entry queries to confirm processing results. MED callbacks are limited to the scope that has been enabled and delivered.
+
+### **Core terminology**
+
+<table>
+  <colgroup>
+    <col width="249" />
+    <col width="461" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>**Term**</th>
+      <th>**Meaning**</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>MA / Master Account</td>
+      <td>Master account that establishes the party and ownership of managed accounts</td>
+    </tr>
+    <tr>
+      <td>Managed Account</td>
+      <td>Managed accounts, including MOR, VA, and PA</td>
+    </tr>
+    <tr>
+      <td>MOR</td>
+      <td>Operating account that reuses its parent MA's approved compliance records</td>
+    </tr>
+    <tr>
+      <td>VA</td>
+      <td>Managed account that must belong to a parent MA and has its own compliance records and bank account</td>
+    </tr>
+    <tr>
+      <td>PA</td>
+      <td>Payment account that must belong to a parent MA or a VA under that MA and has its own compliance records and bank account</td>
+    </tr>
+    <tr>
+      <td>PLATFORM / USER / ACCOUNT</td>
+      <td>Three API credential identities: platform, user, and account</td>
+    </tr>
+    <tr>
+      <td>ISPB</td>
+      <td>Bank participant identifier that identifies an account together with the account number</td>
+    </tr>
+    <tr>
+      <td>Pix Key</td>
+      <td>Identifier that points to a Pix payee account, distinct from API signing credentials</td>
+    </tr>
+    <tr>
+      <td>EndToEnd ID</td>
+      <td>Original Pix transaction ID, used to link transactions and for operations involving MED cases</td>
+    </tr>
+    <tr>
+      <td>Webhook</td>
+      <td>Notification method that sends business events to the integrator's callback URL</td>
+    </tr>
+    <tr>
+      <td>MED / Infraction</td>
+      <td>Pix special return mechanism and associated infraction reports</td>
+    </tr>
+  </tbody>
+</table>
