@@ -1,0 +1,134 @@
+---
+title: "Account models and capabilities"
+---
+
+### **Account hierarchy**
+
+<img
+  src="/images/Pagsmile_Account_Hierarchy.png"
+  alt="Pagsmile Account Hierarchy"
+  title="Pagsmile Account Hierarchy"
+  style={{ width:"100%" }}
+/>
+
+MA is the Master Account. MOR and VA belong directly to MA. A PA's direct parent can be MA or a VA under the same MA. VA and PA cannot be created without a parent.
+
+### **Capabilities and onboarding requirements by account type**
+
+Once an account is active, its bank account is ready, and required services are enabled, it can retrieve balances and statements, manage Pix keys, and perform collections, payments, refunds, and dispute operations. Funds and transactions are recorded separately per account; hierarchy does not imply automatic balance aggregation.
+
+<table>
+  <colgroup>
+    <col width="130" />
+    <col width="214" />
+    <col width="181" />
+    <col width="200" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Account</th>
+      <th>Example use case</th>
+      <th>How to open</th>
+      <th>Required information</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>MA master account</td>
+      <td>The platform company acts as the integrating entity and manages its own accounts and the managed accounts of its merchants or customers</td>
+      <td>Complete business registration, verification, and activation through the platform. See Quick start</td>
+      <td>Business name, CNPJ, contact information, business operations and ownership information, and verification information for related persons; provide documents as required by the form</td>
+    </tr>
+    <tr>
+      <td>MOR operating account</td>
+      <td>The same MA entity creates separate accounts for different business operations, such as tracking incoming and outgoing payments separately for online and offline operations. These accounts reuse MA compliance information</td>
+      <td>Open the account using the API credentials of the owning master account holder. The system automatically links it to the master account</td>
+      <td>Account opening business ID; you can provide a trade name and notification email address. The account reuses the master account's approved compliance information, so you do not need to submit separate entity review information</td>
+    </tr>
+    <tr>
+      <td>VA managed account</td>
+      <td>The platform creates an account for each onboarded CNPJ business merchant to track that merchant's incoming payments, outgoing payments, and statement entries separately</td>
+      <td>Open the account using the API credentials of the owning master account holder. The system automatically links it to the master account</td>
+      <td>Account opening business ID, review information submission method, business entity document type (CNPJ), CNPJ, and legal business name. Depending on the selected review method, provide additional details, a return URL to use after the review is complete, or an existing verification record</td>
+    </tr>
+    <tr>
+      <td>PA payment account</td>
+      <td>The platform creates payment accounts for individual customers with a CPF or business customers with a CNPJ. Use the owning MA's USER credentials to initiate operations on the target account. A payment account can belong directly to the MA or to a VA under it</td>
+      <td>Use the API credentials of the owning master account holder to open the account. Specify the owning master account or a VA under it as the parent account</td>
+      <td>Account opening business ID, submission method for review documents, the PA's own document type, CPF or CNPJ, and individual name or legal business name. Also provide the parent account's bank participant identifier and account number. Provide any additional information required by the review method</td>
+    </tr>
+  </tbody>
+</table>
+
+VA and PA accounts do not need to resubmit the MA's business information, but must still provide their own entity information and complete the applicable compliance processes. VA currently supports account opening only for legal entities with a CNPJ. PA supports individuals with a CPF or legal entities with a CNPJ. For technical integration requirements and API call examples, see [Create managed account](#api-36).
+
+### **Credentials and account selection**
+
+<table>
+  <colgroup>
+    <col width="130" />
+    <col width="214" />
+    <col width="389" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Credentials</th>
+      <th>Purpose</th>
+      <th>Account selection requirements</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Platform-level API credentials</td>
+      <td>Subscribe to MA compliance events within the authorization scope</td>
+      <td>Not used for ordinary bank account funds operations; no account specified for funds operations</td>
+    </tr>
+    <tr>
+      <td>User-level API credentials</td>
+      <td>Open and query managed accounts under the owning MA, and perform funds operations on authorized accounts</td>
+      <td>Credentials determine the scope of account opening management. For funds operations, you must specify the bank participant identifier and account number of the account used for the operation</td>
+    </tr>
+    <tr>
+      <td>Bank-account-level API credentials</td>
+      <td>Operate the MOR/VA bank account bound to the credentials</td>
+      <td>Operations target the bank account bound to the credentials by default. If you specify an account, it must match the bound account. These credentials cannot create managed accounts or operate PA accounts</td>
+    </tr>
+  </tbody>
+</table>
+
+The parent account specified during account opening differs from the account whose funds are used for a transaction. To initiate a transaction for a PA, you must specify the PA's own bank account.
+
+## **Integration examples**
+
+### **Account models: choose by funds ownership**
+
+Using product sales as an example, choose based on funds ownership and whether a separate account needs to be opened.
+
+<table>
+  <colgroup>
+    <col width="130" />
+    <col width="619" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Business needsBusiness needs</th>
+      <th>Selection guidance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A business sells its own products and collects payments centrally</td>
+      <td>Complete MA integration first. Evaluate MOR if you need to reuse the MA's compliance records to create an operating account. Ordinary buyers do not need a PA.</td>
+    </tr>
+    <tr>
+      <td>Open separate accounts for merchants joining the platform</td>
+      <td>Legal entities can evaluate VA. Individuals or legal entities can evaluate PA based on eligibility requirements.</td>
+    </tr>
+    <tr>
+      <td>Buyers need their own funds accounts</td>
+      <td>Evaluate PA and separately confirm permissions for funds operations such as payments and withdrawals.</td>
+    </tr>
+  </tbody>
+</table>
+
+Account ownership is not the same as debit authorization. The final choice depends on entity eligibility and enabled services.

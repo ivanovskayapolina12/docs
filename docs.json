@@ -9,6 +9,7 @@
   },
   "navigation": {
     "pages": [
+      "account-models-and-capabilities",
       "welcome-to-pagsmile",
       "index",
       {
